@@ -91,11 +91,7 @@ under the License.
     </servlet>
     <servlet>
         <servlet-name>RestServlet</servlet-name>
-        <servlet-class>org.glassfish.jersey.servlet.ServletContainer</servlet-class>
-        <init-param>
-            <param-name>javax.ws.rs.Application</param-name>
-            <param-value>org.apache.ofbiz.webapp.rest.RestResourceConfig</param-value>
-        </init-param>
+        <servlet-class>org.apache.ofbiz.webapp.rest.ControlRestServlet</servlet-class>
         <load-on-startup>1</load-on-startup>
     </servlet>
     <servlet-mapping><servlet-name>ControlServlet</servlet-name><url-pattern>/control/*</url-pattern></servlet-mapping>
