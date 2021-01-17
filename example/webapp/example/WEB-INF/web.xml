@@ -91,7 +91,7 @@ under the License.
     </servlet>
     <servlet>
         <servlet-name>RestServlet</servlet-name>
-        <servlet-class>org.apache.ofbiz.webapp.rest.ControlRestServlet</servlet-class>
+        <servlet-class>org.apache.ofbiz.webapp.rest.RestServlet</servlet-class>
         <load-on-startup>1</load-on-startup>
     </servlet>
     <servlet-mapping><servlet-name>ControlServlet</servlet-name><url-pattern>/control/*</url-pattern></servlet-mapping>
