@@ -90,12 +90,22 @@ under the License.
         <load-on-startup>1</load-on-startup>
     </servlet>
     <servlet>
+        <description>REST Servlet</description>
+        <display-name>RestServlet</display-name>
         <servlet-name>RestServlet</servlet-name>
         <servlet-class>org.apache.ofbiz.webapp.rest.RestServlet</servlet-class>
         <load-on-startup>1</load-on-startup>
     </servlet>
+    <servlet>
+        <description>REST UI Servlet</description>
+        <display-name>RestUiServlet</display-name>
+        <servlet-name>RestUiServlet</servlet-name>
+        <servlet-class>org.apache.ofbiz.webapp.rest.RestUiServlet</servlet-class>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
     <servlet-mapping><servlet-name>ControlServlet</servlet-name><url-pattern>/control/*</url-pattern></servlet-mapping>
     <servlet-mapping><servlet-name>RestServlet</servlet-name><url-pattern>/rest/*</url-pattern></servlet-mapping>
+    <servlet-mapping><servlet-name>RestUiServlet</servlet-name><url-pattern>/rest-ui/*</url-pattern></servlet-mapping>
 
     <session-config>
         <session-timeout>60</session-timeout><!-- in minutes -->
