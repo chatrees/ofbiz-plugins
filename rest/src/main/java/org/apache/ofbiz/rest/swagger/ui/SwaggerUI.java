@@ -11,14 +11,31 @@ public class SwaggerUI extends PojoSwap<Swagger, Script> {
 
     @Override
     public Script swap(BeanSession session, Swagger swagger) throws Exception {
-
-        // TODO swagger JSON URL: /rest/?method=OPTIONS
+        String url = swagger.getBasePath() + "?method=OPTIONS";
         Script script = script()
                 .type("text/javascript")
                 .charset("UTF-8")
                 .text(
-                        "window.onload = function() {" +
-                                "}");
+                        "window.onload = function() {\n" +
+                        "      // Begin Swagger UI call region\n" +
+                        "      const ui = SwaggerUIBundle({\n" +
+                        "        url: \"" + url + "\",\n" +
+                        "        dom_id: '#swagger-ui',\n" +
+                        "        deepLinking: true,\n" +
+                        "        presets: [\n" +
+                        "          SwaggerUIBundle.presets.apis,\n" +
+                        "          SwaggerUIStandalonePreset\n" +
+                        "        ],\n" +
+                        "        plugins: [\n" +
+                        "          SwaggerUIBundle.plugins.DownloadUrl\n" +
+                        "        ],\n" +
+                        "        layout: \"StandaloneLayout\"\n" +
+                        "      })\n" +
+                        "      // End Swagger UI call region\n" +
+                        "\n" +
+                        "      window.ui = ui\n" +
+                        "    }"
+                );
         return script;
     }
 }

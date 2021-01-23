@@ -103,6 +103,10 @@ under the License.
         <servlet-name>SwaggerUIServlet</servlet-name>
         <servlet-class>org.apache.ofbiz.rest.swagger.ui.SwaggerUIServlet</servlet-class>
         <load-on-startup>1</load-on-startup>
+        <init-param>
+            <param-name>restPath</param-name>
+            <param-value>/rest</param-value>
+        </init-param>
     </servlet>
     <servlet-mapping><servlet-name>ControlServlet</servlet-name><url-pattern>/control/*</url-pattern></servlet-mapping>
     <servlet-mapping><servlet-name>RestServlet</servlet-name><url-pattern>/rest/*</url-pattern></servlet-mapping>

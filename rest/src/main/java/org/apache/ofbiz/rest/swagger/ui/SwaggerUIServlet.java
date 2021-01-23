@@ -31,6 +31,10 @@ public class SwaggerUIServlet extends RestServlet implements BasicUniversalRest 
 
     @RestMethod(name=GET, path="/*")
     public Swagger getOptions(RestRequest req) {
-        return req.getSwagger();
+        String restPath = getInitParameter("restPath");
+        String basePath = req.getContextPath() + restPath;
+        Swagger swagger = req.getSwagger();
+        swagger.setBasePath(basePath);
+        return swagger;
     }
 }
