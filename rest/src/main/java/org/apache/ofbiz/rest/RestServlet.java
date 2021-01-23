@@ -12,7 +12,9 @@ import org.apache.juneau.rest.util.UrlPathPattern;
 import org.apache.juneau.rest.util.UrlPathPatternMatch;
 import org.apache.ofbiz.base.util.Debug;
 
+import java.net.URL;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.apache.juneau.dto.swagger.SwaggerBuilder.*;
@@ -41,6 +43,13 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
 
         // TODO Custom Swagger
         try {
+            URL restConfigURL = RestConfigXMLReader.getRestConfigURL(getServletContext());
+            RestConfigXMLReader.RestConfig restConfig = RestConfigXMLReader.getRestConfig(restConfigURL);
+            List<RestConfigXMLReader.Resource> resources = restConfig.getResources();
+            for (RestConfigXMLReader.Resource resource : resources) {
+
+            }
+
             Swagger swagger = swagger()
                     .swagger("2.0")
                     .info(
@@ -60,8 +69,24 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                     .definitions(originalSwagger.getDefinitions())
                     .tags(
                             tag("pet").description("Pet")
-                    )
-                    .path("/pet", "get",
+                    );
+
+            for (RestConfigXMLReader.Resource resource : resources) {
+                String name = resource.getName();
+                String path = "/" + name;
+                Map<String, RestConfigXMLReader.MethodHandler> methodHandlerMap = resource.getMethodHandlerMap();
+                for (String methodName : methodHandlerMap.keySet()) {
+                    swagger.path(path, methodName,
+                            operation()
+                                    .tags("pet")
+                                    .operationId(name)
+                                    .consumes(MediaType.JSON)
+                                    .response("200",
+                                            responseInfo("successful operation"))
+                    );
+                }
+            }
+            swagger.path("/pet", "get",
                             operation()
                             .tags("pet")
                             .operationId("getPet")

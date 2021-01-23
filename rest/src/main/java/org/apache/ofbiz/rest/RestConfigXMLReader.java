@@ -8,6 +8,8 @@ import org.apache.ofbiz.webapp.control.WebAppConfigurationException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
+import javax.servlet.ServletContext;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -31,6 +33,15 @@ public final class RestConfigXMLReader {
             restConfig = REST_CACHE.putIfAbsentAndGet(url, new RestConfig(url));
         }
         return restConfig;
+    }
+
+    public static URL getRestConfigURL(ServletContext context) {
+        try {
+            return context.getResource("/" + REST_XML_FILE_PATH);
+        } catch (MalformedURLException e) {
+            Debug.logError(e, "Error Finding REST XML Config File: " + REST_XML_FILE_PATH, MODULE);
+            return null;
+        }
     }
 
     private static Element loadDocument(URL location) throws WebAppConfigurationException  {
@@ -73,6 +84,10 @@ public final class RestConfigXMLReader {
             } catch (GeneralException e) {
                 throw new WebAppConfigurationException(e);
             }
+        }
+
+        public List<Resource> getResources() {
+            return resources;
         }
     }
 
@@ -124,37 +139,49 @@ public final class RestConfigXMLReader {
             this.tags = resourceElement.getAttribute("tags");
             this.parent = parent;
 
-            // methods
-            List<? extends  Element> methodElements = UtilXml.childElementList(resourceElement, "method");
-            for (Element methodElement : methodElements) {
-                String type = methodElement.getAttribute("type");
-                Element handlerElement = UtilXml.firstChildElement(methodElement);
-                String handlerElementName = handlerElement.getTagName();
-                MethodHandler methodHandler;
-                if ("service".equals(handlerElementName)) {
-                    methodHandler = new ServiceMethodHandler(handlerElement);
-                } else if ("entity".equals(handlerElementName)) {
-                    methodHandler = new EntityMethodHandler(handlerElement);
-                } else {
-                    throw new GeneralException("Unknown method handler found: " + handlerElementName);
-                }
-
-                methodHandlerMap.put(type, methodHandler);
-            }
-
-            // resources
-            List<? extends  Element> childResourceElements = UtilXml.childElementList(resourceElement, "resource");
+            // children
+            List<? extends  Element> childResourceElements = UtilXml.childElementList(resourceElement);
             for (Element childResourceElement : childResourceElements) {
-                Resource childResource = new Resource(childResourceElement, this);
-                this.childResourceMap.put(childResource.name, childResource);
-            }
+                String tagName = childResourceElement.getTagName();
+                if ("method".equals(tagName)) { // method
+                    String type = childResourceElement.getAttribute("type");
+                    Element handlerElement = UtilXml.firstChildElement(childResourceElement);
+                    if (handlerElement == null) {
+                        throw new GeneralException("A handler for method \"" + type + "\" is missing");
+                    }
+                    String handlerElementName = handlerElement.getTagName();
+                    MethodHandler methodHandler;
+                    if ("service".equals(handlerElementName)) {
+                        methodHandler = new ServiceMethodHandler(handlerElement);
+                    } else if ("entity".equals(handlerElementName)) {
+                        methodHandler = new EntityMethodHandler(handlerElement);
+                    } else {
+                        throw new GeneralException("Unknown method handler found: " + handlerElementName);
+                    }
 
-            // vars
-            List<? extends  Element> varElements = UtilXml.childElementList(resourceElement, "var");
-            for (Element varElement : varElements) {
-                Resource varResource = new VarResource(varElement, this);
-                this.childResourceMap.put(varResource.name, varResource);
+                    methodHandlerMap.put(type, methodHandler);
+                } else if ("resource".equals(tagName)) {
+                    Resource childResource = new Resource(childResourceElement, this);
+                    this.childResourceMap.put(childResource.name, childResource);
+                } else if ("var".equals(tagName)) {
+                    Resource childResource = new VarResource(childResourceElement, this);
+                    this.childResourceMap.put(childResource.name, childResource);
+                } else {
+                    throw new GeneralException("Unknown child resource found: " + tagName);
+                }
             }
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public Map<String, MethodHandler> getMethodHandlerMap() {
+            return methodHandlerMap;
+        }
+
+        public Map<String, Resource> getChildResourceMap() {
+            return childResourceMap;
         }
     }
 

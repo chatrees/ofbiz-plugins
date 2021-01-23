@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rest-conf>
+    <resource name="resource1">
+        <method type="get"><service/></method>
+    </resource>
+    <resource name="resource2">
+        <method type="get"><entity/></method>
+    </resource>
+</rest-conf>
