@@ -2,6 +2,8 @@ package org.apache.ofbiz.rest;
 
 import org.apache.juneau.dto.swagger.Swagger;
 import org.apache.juneau.http.MediaType;
+import org.apache.juneau.json.JsonParser;
+import org.apache.juneau.json.JsonSerializer;
 import org.apache.juneau.rest.RestContext;
 import org.apache.juneau.rest.RestRequest;
 import org.apache.juneau.rest.annotation.Rest;
@@ -14,20 +16,27 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.apache.juneau.dto.swagger.SwaggerBuilder.*;
-import static org.apache.juneau.dto.swagger.SwaggerBuilder.responseInfo;
 import static org.apache.juneau.http.HttpMethod.GET;
 import static org.apache.juneau.http.HttpMethod.OPTIONS;
 
 @Rest(
         // Allow OPTIONS requests to be simulated using ?method=OPTIONS query parameter.
-        allowedMethodParams="OPTIONS"
+        allowedMethodParams="OPTIONS",
+        serializers = {
+                JsonSerializer.class,
+        },
+        parsers = {
+                JsonParser.class,
+        }
 )
 public class RestServlet extends org.apache.juneau.rest.RestServlet {
 
     private static final String MODULE = RestServlet.class.getName();
 
-    @RestMethod(method = OPTIONS, path = "/")
+    @RestMethod(method = OPTIONS, path = "/", consumes = {})
     public Swagger getOptions(RestRequest req) {
+        String basePath = req.getContextPath() + req.getServletPath();
+
         Swagger originalSwagger = req.getSwagger();
 
         // TODO Custom Swagger
@@ -45,11 +54,20 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                                             license("Apache 2.0").url("http://www.apache.org/licenses/LICENSE-2.0.html")
                                     )
                     )
+                    .basePath(basePath)
                     .consumes(originalSwagger.getConsumes())
                     .produces(originalSwagger.getProduces())
                     .definitions(originalSwagger.getDefinitions())
                     .tags(
                             tag("pet").description("Pet")
+                    )
+                    .path("/pet", "get",
+                            operation()
+                            .tags("pet")
+                            .operationId("getPet")
+                            .consumes(MediaType.JSON)
+                            .response("200",
+                                    responseInfo("successful operation"))
                     )
                     .path("/pet", "post",
                             operation()
