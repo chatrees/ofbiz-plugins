@@ -2,6 +2,8 @@
 <rest-conf>
     <resource name="resource1">
         <method type="get"><service/></method>
+        <resource name="resource3">
+        </resource>
     </resource>
     <resource name="resource2">
         <method type="get"><entity/></method>

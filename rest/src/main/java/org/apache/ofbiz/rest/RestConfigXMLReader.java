@@ -2,6 +2,7 @@ package org.apache.ofbiz.rest;
 
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.GeneralException;
+import org.apache.ofbiz.base.util.StringUtil;
 import org.apache.ofbiz.base.util.UtilXml;
 import org.apache.ofbiz.base.util.cache.UtilCache;
 import org.apache.ofbiz.webapp.control.WebAppConfigurationException;
@@ -13,10 +14,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public final class RestConfigXMLReader {
 
@@ -28,11 +26,13 @@ public final class RestConfigXMLReader {
             .createUtilCache("webapp.RestSearchResults");
 
     public static RestConfig getRestConfig(URL url) throws WebAppConfigurationException {
-        RestConfig restConfig = REST_CACHE.get(url);
-        if (restConfig == null) {
-            restConfig = REST_CACHE.putIfAbsentAndGet(url, new RestConfig(url));
-        }
-        return restConfig;
+//        RestConfig restConfig = REST_CACHE.get(url);
+//        if (restConfig == null) {
+//            restConfig = REST_CACHE.putIfAbsentAndGet(url, new RestConfig(url));
+//        }
+//        return restConfig;
+
+        return new RestConfig(url);
     }
 
     public static URL getRestConfigURL(ServletContext context) {
@@ -174,6 +174,24 @@ public final class RestConfigXMLReader {
 
         public String getName() {
             return name;
+        }
+
+        public String getPath() {
+            List<String> tokens = new ArrayList<>();
+            Resource current = this;
+            do {
+                Resource parent = current.parent;
+                if (current instanceof VarResource) {
+                    tokens.add("{" + current.name + "}");
+                } else {
+                    tokens.add(current.name);
+                }
+                if (parent != null) {
+                    current = parent;
+                }
+            } while (parent != null);
+            Collections.reverse(tokens);
+            return "/" + StringUtil.join(tokens, "/");
         }
 
         public Map<String, MethodHandler> getMethodHandlerMap() {

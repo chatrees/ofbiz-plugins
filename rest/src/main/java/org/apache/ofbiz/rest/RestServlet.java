@@ -72,14 +72,13 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                     );
 
             for (RestConfigXMLReader.Resource resource : resources) {
-                String name = resource.getName();
-                String path = "/" + name;
+                String path = resource.getPath();
                 Map<String, RestConfigXMLReader.MethodHandler> methodHandlerMap = resource.getMethodHandlerMap();
                 for (String methodName : methodHandlerMap.keySet()) {
                     swagger.path(path, methodName,
                             operation()
                                     .tags("pet")
-                                    .operationId(name)
+                                    .operationId(path)
                                     .consumes(MediaType.JSON)
                                     .response("200",
                                             responseInfo("successful operation"))
