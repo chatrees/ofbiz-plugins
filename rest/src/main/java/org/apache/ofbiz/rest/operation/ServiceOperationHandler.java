@@ -2,9 +2,17 @@ package org.apache.ofbiz.rest.operation;
 
 import org.apache.ofbiz.rest.RestConfigXMLReader;
 
-public class ServiceOperationHandler {
+import javax.servlet.ServletContext;
 
-    public static OperationResult invoke(RestConfigXMLReader.Operation operation) {
+public class ServiceOperationHandler implements OperationHandler {
+
+    @Override
+    public void init(ServletContext context) throws OperationHandlerException {
+
+    }
+
+    @Override
+    public OperationResult invoke(RestConfigXMLReader.Operation operation) {
         return null;
     }
 }

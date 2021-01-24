@@ -12,12 +12,8 @@ import org.apache.juneau.rest.util.UrlPathPattern;
 import org.apache.juneau.rest.util.UrlPathPatternMatch;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.GeneralException;
-import org.apache.ofbiz.rest.operation.EntityOperationHandler;
-import org.apache.ofbiz.rest.operation.OperationResult;
-import org.apache.ofbiz.rest.operation.ServiceOperationHandler;
-import org.w3c.dom.Element;
 
-import java.net.URL;
+import javax.servlet.ServletException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +36,12 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
 
     private static final String MODULE = RestServlet.class.getName();
 
+    @Override
+    public void init() throws ServletException {
+        // Initialize the rest request handler.
+        RestRequestHandler.getRestRequestHandler(getServletContext());
+    }
+
     @RestMethod(method = OPTIONS, path = "/", consumes = {})
     public Swagger getOptions(RestRequest req) {
         String basePath = req.getContextPath() + req.getServletPath();
@@ -48,9 +50,9 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
 
         // TODO Custom Swagger
         try {
-            URL restConfigURL = RestConfigXMLReader.getRestConfigURL(getServletContext());
-            RestConfigXMLReader.RestConfig restConfig = RestConfigXMLReader.getRestConfig(restConfigURL);
-            List<RestConfigXMLReader.Operation> operations = restConfig.getOperationNodes();
+            RestRequestHandler restRequestHandler = RestRequestHandler.getRestRequestHandler(getServletContext());
+            RestConfigXMLReader.RestConfig restConfig = restRequestHandler.getRestConfig();
+            List<RestConfigXMLReader.Operation> operations = restConfig.getOperations();
             for (RestConfigXMLReader.Operation operation : operations) {
 
             }
@@ -123,6 +125,7 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
 
     @RestMethod(method = GET, path = "*")
     public void onGet(RestContext restContext) {
+        RestRequestHandler restRequestHandler = RestRequestHandler.getRestRequestHandler(getServletContext());
         RestRequest restRequest = restContext.getRequest();
         String pathInfo = restRequest.getPathInfo();
         Debug.logInfo("GET: " + restContext, MODULE);
@@ -136,9 +139,9 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
 
         try {
             // TODO find operation
-            RestConfigXMLReader.Operation operation = null;
+            RestConfigXMLReader.Operation operation = findOperation(restContext);
             if (operation != null) {
-                OperationResult operationResult = handleOperation(operation);
+                restRequestHandler.runOperation(operation);
             } else {
                 // TODO set an error
             }
@@ -154,15 +157,11 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
         restContext.getResponse().setOutput(output);
     }
 
-    private OperationResult handleOperation(RestConfigXMLReader.Operation operation) throws GeneralException {
-        Element handlerElement = operation.getHandlerElement();
-        String handlerType = handlerElement.getTagName();
-        if ("service".equals(handlerType)) {
-            return ServiceOperationHandler.invoke(operation);
-        } else if ("entity".equals(handlerType)) {
-            return EntityOperationHandler.invoke(operation);
-        } else {
-            throw new GeneralException("Unknown handler found: " + handlerType);
-        }
+    private RestConfigXMLReader.Operation findOperation(RestContext restContext) {
+        RestRequestHandler restRequestHandler = RestRequestHandler.getRestRequestHandler(getServletContext());
+        RestConfigXMLReader.RestConfig restConfig = restRequestHandler.getRestConfig();
+        List<RestConfigXMLReader.Operation> operations = restConfig.getOperations(restContext.getRequest().getMethod().toLowerCase());
+        // TODO find an operation
+        return operations.get(0);
     }
 }

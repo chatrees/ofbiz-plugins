@@ -104,16 +104,23 @@ public final class RestConfigXMLReader {
             }
         }
 
-        public List<Operation> getOperationNodes() {
+        public List<Operation> getOperations() {
             return operations;
         }
 
-        public List<Operation> getOperationNodes(String method) {
+        public List<Operation> getOperations(String method) {
             return methodOperationNodesMap.get(method);
         }
 
         public Collection<Tag> getTags() {
             return tags.values();
+        }
+
+        public Map<String, String> getOperationHandlerMap() {
+            // TODO load from rest.xml
+            return UtilMisc.toMap(
+                    "service", "org.apache.ofbiz.rest.operation.ServiceOperationHandler",
+                    "entity", "org.apache.ofbiz.rest.operation.EntityOperationHandler");
         }
     }
 
