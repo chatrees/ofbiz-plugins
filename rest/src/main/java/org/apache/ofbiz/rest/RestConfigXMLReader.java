@@ -64,8 +64,8 @@ public final class RestConfigXMLReader {
 
     public static class RestConfig {
 
-        private final List<OperationNode> operationNodes = new ArrayList<>();
-        private final Map<String, List<OperationNode>> methodOperationNodesMap = new HashMap<>();
+        private final List<Operation> operations = new ArrayList<>();
+        private final Map<String, List<Operation>> methodOperationNodesMap = new HashMap<>();
         private final Map<String, Tag> tags = new HashMap<>();
 
         public RestConfig(URL url) throws WebAppConfigurationException {
@@ -90,25 +90,25 @@ public final class RestConfigXMLReader {
         }
 
         private void loadResource(Resource resource) {
-            Map<String, MethodHandler> methodHandlerMap = resource.getMethodHandlerMap();
-            for (String method : methodHandlerMap.keySet()) {
-                OperationNode operationNode = new OperationNode(resource);
-                this.operationNodes.add(operationNode);
+            Map<String, Operation> methodOperationMap = resource.getMethodOperationMap();
+            for (String method : methodOperationMap.keySet()) {
+                Operation operation = methodOperationMap.get(method);
+                this.operations.add(operation);
 
-                // add the operation node to the method map
-                List<OperationNode> operationNodes = this.methodOperationNodesMap.computeIfAbsent(method, k -> new ArrayList<>());
-                operationNodes.add(operationNode);
+                // add the operation to the method map
+                List<Operation> operations = this.methodOperationNodesMap.computeIfAbsent(method, k -> new ArrayList<>());
+                operations.add(operation);
 
                 // add tags
-                tags.putAll(operationNode.resource.getTags());
+                tags.putAll(operation.getTags());
             }
         }
 
-        public List<OperationNode> getOperationNodes() {
-            return operationNodes;
+        public List<Operation> getOperationNodes() {
+            return operations;
         }
 
-        public List<OperationNode> getOperationNodes(String method) {
+        public List<Operation> getOperationNodes(String method) {
             return methodOperationNodesMap.get(method);
         }
 
@@ -121,17 +121,17 @@ public final class RestConfigXMLReader {
 
     }
 
-    public static abstract class MethodHandler {
+    public static abstract class OperationHandler {
         protected Element element;
-        public MethodHandler(Element element) {
+        public OperationHandler(Element element) {
             this.element = element;
         }
         public abstract RestResult run(Resource resource);
     }
 
-    public static class ServiceMethodHandler extends MethodHandler {
+    public static class ServiceOperationHandler extends OperationHandler {
 
-        public ServiceMethodHandler(Element element) {
+        public ServiceOperationHandler(Element element) {
             super(element);
         }
 
@@ -141,9 +141,9 @@ public final class RestConfigXMLReader {
         }
     }
 
-    public static class EntityMethodHandler extends MethodHandler {
+    public static class EntityOperationHandler extends OperationHandler {
 
-        public EntityMethodHandler(Element element) {
+        public EntityOperationHandler(Element element) {
             super(element);
         }
 
@@ -154,47 +154,98 @@ public final class RestConfigXMLReader {
     }
 
     public static class Resource {
-        private final String name;
-        private final Map<String, Tag> tags;
-        private final Resource parent;
-        private final Map<String, MethodHandler> methodHandlerMap = new HashMap<>();
-        private final Map<String, Resource> childResourceMap = new HashMap<>();
+        protected final String name;
+        protected final Resource parent;
+        protected final Map<String, Operation> methodOperationMap = new HashMap<>();
+        protected final Map<String, Resource> childResourceMap = new HashMap<>();
 
         public Resource(Element resourceElement, Resource parent) throws GeneralException {
             this.name = resourceElement.getAttribute("name");
-            this.tags = createTags(resourceElement);
             this.parent = parent;
 
             // children
-            List<? extends  Element> childResourceElements = UtilXml.childElementList(resourceElement);
-            for (Element childResourceElement : childResourceElements) {
-                String tagName = childResourceElement.getTagName();
-                if ("method".equals(tagName)) { // method
-                    String type = childResourceElement.getAttribute("type");
-                    Element handlerElement = UtilXml.firstChildElement(childResourceElement);
-                    if (handlerElement == null) {
-                        throw new GeneralException("A handler for method \"" + type + "\" is missing");
-                    }
-                    String handlerElementName = handlerElement.getTagName();
-                    MethodHandler methodHandler;
-                    if ("service".equals(handlerElementName)) {
-                        methodHandler = new ServiceMethodHandler(handlerElement);
-                    } else if ("entity".equals(handlerElementName)) {
-                        methodHandler = new EntityMethodHandler(handlerElement);
-                    } else {
-                        throw new GeneralException("Unknown method handler found: " + handlerElementName);
-                    }
-
-                    methodHandlerMap.put(type, methodHandler);
+            List<? extends  Element> childElements = UtilXml.childElementList(resourceElement);
+            for (Element childElement : childElements) {
+                String tagName = childElement.getTagName();
+                if ("operation".equals(tagName)) { // operation
+                    Operation operation = new Operation(childElement, this);
+                    this.methodOperationMap.put(operation.getMethod(), operation);
                 } else if ("resource".equals(tagName)) {
-                    Resource childResource = new Resource(childResourceElement, this);
+                    Resource childResource = new Resource(childElement, this);
                     this.childResourceMap.put(childResource.name, childResource);
                 } else if ("var".equals(tagName)) {
-                    Resource childResource = new VarResource(childResourceElement, this);
+                    Resource childResource = new VarResource(childElement, this);
                     this.childResourceMap.put(childResource.name, childResource);
                 } else {
                     throw new GeneralException("Unknown child resource found: " + tagName);
                 }
+            }
+        }
+
+        public String getPathComponent() {
+            return name;
+        }
+
+        public Map<String, Operation> getMethodOperationMap() {
+            return methodOperationMap;
+        }
+
+        public Map<String, Resource> getChildResourceMap() {
+            return childResourceMap;
+        }
+    }
+
+    public static class VarResource extends Resource {
+
+        public VarResource(Element resourceElement, Resource parent) throws GeneralException {
+            super(resourceElement, parent);
+        }
+
+        @Override
+        public String getPathComponent() {
+            return "{" + super.getPathComponent() + "}";
+        }
+    }
+
+    public static class Operation {
+        private final String method;
+        private final String path;
+        private final OperationHandler operationHandler;
+        private final Map<String, Tag> tags;
+        public Operation(Element element, Resource resource) throws GeneralException {
+            this.method = element.getAttribute("method");
+            this.path = createPath(resource);
+            this.operationHandler = createOperationHandler(element);
+            this.tags = createTags(element);
+        }
+
+        private String createPath(Resource resource) {
+            List<String> pathComponents = new ArrayList<>();
+            Resource current = resource;
+            do {
+                pathComponents.add(current.getPathComponent());
+                current = current.parent;
+            } while (current != null);
+            Collections.reverse(pathComponents);
+            return "/" + StringUtil.join(pathComponents, "/");
+        }
+
+        private OperationHandler createOperationHandler(Element element) throws GeneralException {
+            Element handlerElement = UtilXml.firstChildElement(element, "handler");
+            if (handlerElement == null) {
+                throw new GeneralException("A handler for method \"" + method + "\" is missing");
+            }
+            Element handlerTypeElement = UtilXml.firstChildElement(handlerElement);
+            if (handlerTypeElement == null) {
+                throw new GeneralException("A handler type for method \"" + method + "\" is missing");
+            }
+            String handlerTypeName = handlerTypeElement.getTagName();
+            if ("service".equals(handlerTypeName)) {
+                return new ServiceOperationHandler(handlerElement);
+            } else if ("entity".equals(handlerTypeName)) {
+                return new EntityOperationHandler(handlerElement);
+            } else {
+                throw new GeneralException("Unknown handler type found: " + handlerTypeName);
             }
         }
 
@@ -214,59 +265,20 @@ public final class RestConfigXMLReader {
             return tags;
         }
 
-        public String getName() {
-            return name;
-        }
-
-        public Map<String, Tag> getTags() {
-            return tags;
-        }
-
-        public Map<String, MethodHandler> getMethodHandlerMap() {
-            return methodHandlerMap;
-        }
-
-        public Map<String, Resource> getChildResourceMap() {
-            return childResourceMap;
-        }
-    }
-
-    public static class VarResource extends Resource {
-
-        public VarResource(Element resourceElement, Resource parent) throws GeneralException {
-            super(resourceElement, parent);
-        }
-    }
-
-    public static class OperationNode {
-        private final Resource resource;
-        private final String path;
-        public OperationNode(Resource resource) {
-            this.resource = resource;
-            this.path = createPath();
-        }
-
-        private String createPath() {
-            List<String> tokens = new ArrayList<>();
-            Resource current = resource;
-            do {
-                if (current instanceof VarResource) {
-                    tokens.add("{" + current.name + "}");
-                } else {
-                    tokens.add(current.name);
-                }
-                current = current.parent;
-            } while (current != null);
-            Collections.reverse(tokens);
-            return "/" + StringUtil.join(tokens, "/");
+        public String getMethod() {
+            return method;
         }
 
         public String getPath() {
             return path;
         }
 
-        public Resource getResource() {
-            return resource;
+        public OperationHandler getOperationHandler() {
+            return operationHandler;
+        }
+
+        public Map<String, Tag> getTags() {
+            return tags;
         }
     }
 }

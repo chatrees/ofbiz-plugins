@@ -45,8 +45,8 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
         try {
             URL restConfigURL = RestConfigXMLReader.getRestConfigURL(getServletContext());
             RestConfigXMLReader.RestConfig restConfig = RestConfigXMLReader.getRestConfig(restConfigURL);
-            List<RestConfigXMLReader.OperationNode> operationNodes = restConfig.getOperationNodes();
-            for (RestConfigXMLReader.OperationNode operationNode : operationNodes) {
+            List<RestConfigXMLReader.Operation> operations = restConfig.getOperationNodes();
+            for (RestConfigXMLReader.Operation operation : operations) {
 
             }
 
@@ -71,20 +71,17 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                             tag("pet").description("Pet")
                     );
 
-            for (RestConfigXMLReader.OperationNode operationNode : operationNodes) {
-                String path = operationNode.getPath();
-                RestConfigXMLReader.Resource resource = operationNode.getResource();
-                Map<String, RestConfigXMLReader.MethodHandler> methodHandlerMap = resource.getMethodHandlerMap();
-                for (String methodName : methodHandlerMap.keySet()) {
-                    swagger.path(path, methodName,
-                            operation()
-                                    .tags("pet")
-                                    .operationId(path)
-                                    .consumes(MediaType.JSON)
-                                    .response("200",
-                                            responseInfo("successful operation"))
-                    );
-                }
+            for (RestConfigXMLReader.Operation operation : operations) {
+                String path = operation.getPath();
+                String methodName = operation.getMethod();
+                swagger.path(path, methodName,
+                        operation()
+                                .tags("pet")
+                                .operationId(path)
+                                .consumes(MediaType.JSON)
+                                .response("200",
+                                        responseInfo("successful operation"))
+                );
             }
             swagger.path("/pet", "get",
                             operation()
