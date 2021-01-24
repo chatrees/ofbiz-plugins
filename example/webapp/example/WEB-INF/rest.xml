@@ -3,6 +3,7 @@
     <resource name="resource1">
         <method type="get"><service/></method>
         <resource name="resource3">
+            <method type="get"><service/></method>
         </resource>
     </resource>
     <resource name="resource2">

@@ -1,9 +1,7 @@
 package org.apache.ofbiz.rest;
 
-import org.apache.ofbiz.base.util.Debug;
-import org.apache.ofbiz.base.util.GeneralException;
-import org.apache.ofbiz.base.util.StringUtil;
-import org.apache.ofbiz.base.util.UtilXml;
+import org.apache.juneau.dto.swagger.Tag;
+import org.apache.ofbiz.base.util.*;
 import org.apache.ofbiz.base.util.cache.UtilCache;
 import org.apache.ofbiz.webapp.control.WebAppConfigurationException;
 import org.w3c.dom.Document;
@@ -15,6 +13,8 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+
+import static org.apache.juneau.dto.swagger.SwaggerBuilder.tag;
 
 public final class RestConfigXMLReader {
 
@@ -64,11 +64,11 @@ public final class RestConfigXMLReader {
 
     public static class RestConfig {
 
-        private URL url;
-        private List<Resource> resources = new ArrayList<>();
+        private final List<OperationNode> operationNodes = new ArrayList<>();
+        private final Map<String, List<OperationNode>> methodOperationNodesMap = new HashMap<>();
+        private final Map<String, Tag> tags = new HashMap<>();
 
         public RestConfig(URL url) throws WebAppConfigurationException {
-            this.url = url;
             Element rootElement = loadDocument(url);
             if (rootElement != null) {
                 loadResource(rootElement);
@@ -79,15 +79,41 @@ public final class RestConfigXMLReader {
             try {
                 for (Element resourceElement : UtilXml.childElementList(root, "resource")) {
                     Resource resource = new Resource(resourceElement, null);
-                    resources.add(resource);
+                    loadResource(resource);
+                    for (Resource childResource : resource.getChildResourceMap().values()) {
+                        loadResource(childResource);
+                    }
                 }
             } catch (GeneralException e) {
                 throw new WebAppConfigurationException(e);
             }
         }
 
-        public List<Resource> getResources() {
-            return resources;
+        private void loadResource(Resource resource) {
+            Map<String, MethodHandler> methodHandlerMap = resource.getMethodHandlerMap();
+            for (String method : methodHandlerMap.keySet()) {
+                OperationNode operationNode = new OperationNode(resource);
+                this.operationNodes.add(operationNode);
+
+                // add the operation node to the method map
+                List<OperationNode> operationNodes = this.methodOperationNodesMap.computeIfAbsent(method, k -> new ArrayList<>());
+                operationNodes.add(operationNode);
+
+                // add tags
+                tags.putAll(operationNode.resource.getTags());
+            }
+        }
+
+        public List<OperationNode> getOperationNodes() {
+            return operationNodes;
+        }
+
+        public List<OperationNode> getOperationNodes(String method) {
+            return methodOperationNodesMap.get(method);
+        }
+
+        public Collection<Tag> getTags() {
+            return tags.values();
         }
     }
 
@@ -128,15 +154,15 @@ public final class RestConfigXMLReader {
     }
 
     public static class Resource {
-        private String name;
-        private String tags;
-        private Resource parent;
-        private Map<String, MethodHandler> methodHandlerMap = new HashMap<>();
-        private Map<String, Resource> childResourceMap = new HashMap<>();
+        private final String name;
+        private final Map<String, Tag> tags;
+        private final Resource parent;
+        private final Map<String, MethodHandler> methodHandlerMap = new HashMap<>();
+        private final Map<String, Resource> childResourceMap = new HashMap<>();
 
         public Resource(Element resourceElement, Resource parent) throws GeneralException {
             this.name = resourceElement.getAttribute("name");
-            this.tags = resourceElement.getAttribute("tags");
+            this.tags = createTags(resourceElement);
             this.parent = parent;
 
             // children
@@ -172,26 +198,28 @@ public final class RestConfigXMLReader {
             }
         }
 
+        private Map<String, Tag> createTags(Element resourceElement) {
+            Map<String, Tag> tags = new HashMap<>();
+            String tagsAttr = resourceElement.getAttribute("tags");
+            List<String> tokens = StringUtil.split(tagsAttr, " ");
+            if (UtilValidate.isNotEmpty(tokens)) {
+                for (String token : tokens) {
+                    token = token.trim();
+                    if (!UtilValidate.isEmpty(token)) {
+                        Tag tag = tag(token).description(token);
+                        tags.put(tag.getName(), tag);
+                    }
+                }
+            }
+            return tags;
+        }
+
         public String getName() {
             return name;
         }
 
-        public String getPath() {
-            List<String> tokens = new ArrayList<>();
-            Resource current = this;
-            do {
-                Resource parent = current.parent;
-                if (current instanceof VarResource) {
-                    tokens.add("{" + current.name + "}");
-                } else {
-                    tokens.add(current.name);
-                }
-                if (parent != null) {
-                    current = parent;
-                }
-            } while (parent != null);
-            Collections.reverse(tokens);
-            return "/" + StringUtil.join(tokens, "/");
+        public Map<String, Tag> getTags() {
+            return tags;
         }
 
         public Map<String, MethodHandler> getMethodHandlerMap() {
@@ -207,6 +235,38 @@ public final class RestConfigXMLReader {
 
         public VarResource(Element resourceElement, Resource parent) throws GeneralException {
             super(resourceElement, parent);
+        }
+    }
+
+    public static class OperationNode {
+        private final Resource resource;
+        private final String path;
+        public OperationNode(Resource resource) {
+            this.resource = resource;
+            this.path = createPath();
+        }
+
+        private String createPath() {
+            List<String> tokens = new ArrayList<>();
+            Resource current = resource;
+            do {
+                if (current instanceof VarResource) {
+                    tokens.add("{" + current.name + "}");
+                } else {
+                    tokens.add(current.name);
+                }
+                current = current.parent;
+            } while (current != null);
+            Collections.reverse(tokens);
+            return "/" + StringUtil.join(tokens, "/");
+        }
+
+        public String getPath() {
+            return path;
+        }
+
+        public Resource getResource() {
+            return resource;
         }
     }
 }

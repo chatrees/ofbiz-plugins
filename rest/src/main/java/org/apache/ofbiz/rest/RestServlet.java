@@ -45,8 +45,8 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
         try {
             URL restConfigURL = RestConfigXMLReader.getRestConfigURL(getServletContext());
             RestConfigXMLReader.RestConfig restConfig = RestConfigXMLReader.getRestConfig(restConfigURL);
-            List<RestConfigXMLReader.Resource> resources = restConfig.getResources();
-            for (RestConfigXMLReader.Resource resource : resources) {
+            List<RestConfigXMLReader.OperationNode> operationNodes = restConfig.getOperationNodes();
+            for (RestConfigXMLReader.OperationNode operationNode : operationNodes) {
 
             }
 
@@ -71,8 +71,9 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                             tag("pet").description("Pet")
                     );
 
-            for (RestConfigXMLReader.Resource resource : resources) {
-                String path = resource.getPath();
+            for (RestConfigXMLReader.OperationNode operationNode : operationNodes) {
+                String path = operationNode.getPath();
+                RestConfigXMLReader.Resource resource = operationNode.getResource();
                 Map<String, RestConfigXMLReader.MethodHandler> methodHandlerMap = resource.getMethodHandlerMap();
                 for (String methodName : methodHandlerMap.keySet()) {
                     swagger.path(path, methodName,
