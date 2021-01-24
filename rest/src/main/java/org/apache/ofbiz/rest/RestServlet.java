@@ -11,6 +11,11 @@ import org.apache.juneau.rest.annotation.RestMethod;
 import org.apache.juneau.rest.util.UrlPathPattern;
 import org.apache.juneau.rest.util.UrlPathPatternMatch;
 import org.apache.ofbiz.base.util.Debug;
+import org.apache.ofbiz.base.util.GeneralException;
+import org.apache.ofbiz.rest.operation.EntityOperationHandler;
+import org.apache.ofbiz.rest.operation.OperationResult;
+import org.apache.ofbiz.rest.operation.ServiceOperationHandler;
+import org.w3c.dom.Element;
 
 import java.net.URL;
 import java.util.HashMap;
@@ -129,11 +134,35 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
 
         }
 
+        try {
+            // TODO find operation
+            RestConfigXMLReader.Operation operation = null;
+            if (operation != null) {
+                OperationResult operationResult = handleOperation(operation);
+            } else {
+                // TODO set an error
+            }
+        } catch (GeneralException e) {
+            e.printStackTrace();
+        }
+
         Map<String, Object> output = new HashMap<>();
 
         // TODO set fields returned from calling an event
         output.put("text", "Hello world!");
 
         restContext.getResponse().setOutput(output);
+    }
+
+    private OperationResult handleOperation(RestConfigXMLReader.Operation operation) throws GeneralException {
+        Element handlerElement = operation.getHandlerElement();
+        String handlerType = handlerElement.getTagName();
+        if ("service".equals(handlerType)) {
+            return ServiceOperationHandler.invoke(operation);
+        } else if ("entity".equals(handlerType)) {
+            return EntityOperationHandler.invoke(operation);
+        } else {
+            throw new GeneralException("Unknown handler found: " + handlerType);
+        }
     }
 }

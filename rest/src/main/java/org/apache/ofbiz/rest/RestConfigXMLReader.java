@@ -117,42 +117,6 @@ public final class RestConfigXMLReader {
         }
     }
 
-    public static class RestResult {
-
-    }
-
-    public static abstract class OperationHandler {
-        protected Element element;
-        public OperationHandler(Element element) {
-            this.element = element;
-        }
-        public abstract RestResult run(Resource resource);
-    }
-
-    public static class ServiceOperationHandler extends OperationHandler {
-
-        public ServiceOperationHandler(Element element) {
-            super(element);
-        }
-
-        @Override
-        public RestResult run(Resource resource) {
-            return null;
-        }
-    }
-
-    public static class EntityOperationHandler extends OperationHandler {
-
-        public EntityOperationHandler(Element element) {
-            super(element);
-        }
-
-        @Override
-        public RestResult run(Resource resource) {
-            return null;
-        }
-    }
-
     public static class Resource {
         protected final String name;
         protected final Resource parent;
@@ -210,12 +174,12 @@ public final class RestConfigXMLReader {
     public static class Operation {
         private final String method;
         private final String path;
-        private final OperationHandler operationHandler;
+        private final Element handlerElement;
         private final Map<String, Tag> tags;
         public Operation(Element element, Resource resource) throws GeneralException {
             this.method = element.getAttribute("method");
             this.path = createPath(resource);
-            this.operationHandler = createOperationHandler(element);
+            this.handlerElement = getHandlerElement(element);
             this.tags = createTags(element);
         }
 
@@ -230,23 +194,16 @@ public final class RestConfigXMLReader {
             return "/" + StringUtil.join(pathComponents, "/");
         }
 
-        private OperationHandler createOperationHandler(Element element) throws GeneralException {
-            Element handlerElement = UtilXml.firstChildElement(element, "handler");
+        private Element getHandlerElement(Element element) throws GeneralException {
+            Element handlerWrapperElement = UtilXml.firstChildElement(element, "handler");
+            if (handlerWrapperElement == null) {
+                throw new GeneralException("A handler for method \"" + method + "\" is missing");
+            }
+            Element handlerElement = UtilXml.firstChildElement(handlerWrapperElement);
             if (handlerElement == null) {
                 throw new GeneralException("A handler for method \"" + method + "\" is missing");
             }
-            Element handlerTypeElement = UtilXml.firstChildElement(handlerElement);
-            if (handlerTypeElement == null) {
-                throw new GeneralException("A handler type for method \"" + method + "\" is missing");
-            }
-            String handlerTypeName = handlerTypeElement.getTagName();
-            if ("service".equals(handlerTypeName)) {
-                return new ServiceOperationHandler(handlerElement);
-            } else if ("entity".equals(handlerTypeName)) {
-                return new EntityOperationHandler(handlerElement);
-            } else {
-                throw new GeneralException("Unknown handler type found: " + handlerTypeName);
-            }
+            return handlerElement;
         }
 
         private Map<String, Tag> createTags(Element resourceElement) {
@@ -273,8 +230,8 @@ public final class RestConfigXMLReader {
             return path;
         }
 
-        public OperationHandler getOperationHandler() {
-            return operationHandler;
+        public Element getHandlerElement() {
+            return handlerElement;
         }
 
         public Map<String, Tag> getTags() {
