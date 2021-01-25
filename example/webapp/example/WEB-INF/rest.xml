@@ -12,12 +12,12 @@
     </resource>
     <resource name="resource2">
         <operation method="get">
-            <handler><entity/></handler>
+            <handler><entity name="Example" action="list"/></handler>
         </operation>
-        <var name="resource2Id">
+        <variable name="resource2Id">
             <operation method="get">
-                <handler><entity/></handler>
+                <handler><entity action="one"/></handler>
             </operation>
-        </var>
+        </variable>
     </resource>
 </rest-conf>

@@ -21,9 +21,9 @@ public class OperationHandlerFactory {
         try {
             Map<String, String> handlers = RestConfigXMLReader.getRestConfig(restConfigURL).getOperationHandlerMap();
             for (Map.Entry<String, String> handlerEntry: handlers.entrySet()) {
-                OperationHandler operationHandler = (OperationHandler) ObjectType.getInstance(handlerEntry.getValue());
-                operationHandler.init(servletContext);
-                this.handlers.put(handlerEntry.getKey(), operationHandler);
+                OperationHandler handler = (OperationHandler) ObjectType.getInstance(handlerEntry.getValue());
+                handler.init(servletContext);
+                this.handlers.put(handlerEntry.getKey(), handler);
             }
         } catch (Exception e) {
             Debug.logError(e, MODULE);

@@ -1,10 +1,17 @@
 package org.apache.ofbiz.rest.operation;
 
+import org.apache.juneau.rest.RestContext;
+import org.apache.juneau.rest.util.UrlPathPatternMatch;
+import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.rest.RestConfigXMLReader;
 
 import javax.servlet.ServletContext;
+import java.util.HashMap;
+import java.util.Map;
 
 public class EntityOperationHandler implements OperationHandler {
+
+    private static final String MODULE = EntityOperationHandler.class.getName();
 
     @Override
     public void init(ServletContext context) throws OperationHandlerException {
@@ -12,7 +19,17 @@ public class EntityOperationHandler implements OperationHandler {
     }
 
     @Override
-    public OperationResult invoke(RestConfigXMLReader.Operation operation) {
-        return null;
+    public OperationResult invoke(RestConfigXMLReader.Operation operation, UrlPathPatternMatch urlPathPatternMatch, RestContext restContext) {
+        Debug.logInfo("Entity: " + restContext.getRequest().getMethod() + " : " + restContext.getRequest().getPathInfo(), MODULE);
+
+
+        Map<String, Object> output = new HashMap<>();
+
+        // TODO set fields returned from calling an event
+        output.put("text", "Response from Entity handler.");
+
+        OperationResult result = new OperationResult();
+        result.setOutput(output);
+        return result;
     }
 }

@@ -144,8 +144,8 @@ public final class RestConfigXMLReader {
                 } else if ("resource".equals(tagName)) {
                     Resource childResource = new Resource(childElement, this);
                     this.childResourceMap.put(childResource.name, childResource);
-                } else if ("var".equals(tagName)) {
-                    Resource childResource = new VarResource(childElement, this);
+                } else if ("variable".equals(tagName)) {
+                    Resource childResource = new VariableResource(childElement, this);
                     this.childResourceMap.put(childResource.name, childResource);
                 } else {
                     throw new GeneralException("Unknown child resource found: " + tagName);
@@ -166,9 +166,9 @@ public final class RestConfigXMLReader {
         }
     }
 
-    public static class VarResource extends Resource {
+    public static class VariableResource extends Resource {
 
-        public VarResource(Element resourceElement, Resource parent) throws GeneralException {
+        public VariableResource(Element resourceElement, Resource parent) throws GeneralException {
             super(resourceElement, parent);
         }
 
@@ -179,18 +179,24 @@ public final class RestConfigXMLReader {
     }
 
     public static class Operation {
+        private final String id;
         private final String method;
         private final String path;
         private final Element handlerElement;
         private final Map<String, Tag> tags;
         public Operation(Element element, Resource resource) throws GeneralException {
+            String resourcePath = createResourcePath(resource);
+            String id = StringUtil.replaceString(resourcePath, "{", "");
+            id = StringUtil.replaceString(id, "}", "");
+            id = StringUtil.replaceString(id, "/", "_");
+            this.id = id;
             this.method = element.getAttribute("method");
-            this.path = createPath(resource);
+            this.path = "/" + resourcePath;
             this.handlerElement = getHandlerElement(element);
             this.tags = createTags(element);
         }
 
-        private String createPath(Resource resource) {
+        private String createResourcePath(Resource resource) {
             List<String> pathComponents = new ArrayList<>();
             Resource current = resource;
             do {
@@ -198,7 +204,7 @@ public final class RestConfigXMLReader {
                 current = current.parent;
             } while (current != null);
             Collections.reverse(pathComponents);
-            return "/" + StringUtil.join(pathComponents, "/");
+            return StringUtil.join(pathComponents, "/");
         }
 
         private Element getHandlerElement(Element element) throws GeneralException {
@@ -227,6 +233,10 @@ public final class RestConfigXMLReader {
                 }
             }
             return tags;
+        }
+
+        public String getId() {
+            return id;
         }
 
         public String getMethod() {

@@ -1,5 +1,7 @@
 package org.apache.ofbiz.rest;
 
+import org.apache.juneau.rest.RestContext;
+import org.apache.juneau.rest.util.UrlPathPatternMatch;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.rest.operation.OperationHandler;
 import org.apache.ofbiz.rest.operation.OperationHandlerException;
@@ -48,10 +50,10 @@ public final class RestRequestHandler {
         return null;
     }
 
-    public OperationResult runOperation(RestConfigXMLReader.Operation operation) throws OperationHandlerException {
+    public OperationResult runOperation(RestConfigXMLReader.Operation operation, UrlPathPatternMatch urlPathPatternMatch, RestContext restContext) throws OperationHandlerException {
         Element handlerElement = operation.getHandlerElement();
         String handlerType = handlerElement.getTagName();
         OperationHandler operationHandler = operationHandlerFactory.getOperationHandler(handlerType);
-        return operationHandler.invoke(operation);
+        return operationHandler.invoke(operation, urlPathPatternMatch, restContext);
     }
 }
