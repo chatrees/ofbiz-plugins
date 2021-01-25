@@ -24,12 +24,18 @@ public class SwaggerUI extends PojoSwap<Swagger, Script> {
                         "        deepLinking: true,\n" +
                         "        presets: [\n" +
                         "          SwaggerUIBundle.presets.apis,\n" +
-                        "          SwaggerUIStandalonePreset\n" +
+
+                          // hide the top bar
+//                        "          SwaggerUIStandalonePreset\n" +
+
                         "        ],\n" +
                         "        plugins: [\n" +
                         "          SwaggerUIBundle.plugins.DownloadUrl\n" +
                         "        ],\n" +
-                        "        layout: \"StandaloneLayout\"\n" +
+
+                          // hide the top bar
+//                        "        layout: \"StandaloneLayout\"\n" +
+
                         "      })\n" +
                         "      // End Swagger UI call region\n" +
                         "\n" +
