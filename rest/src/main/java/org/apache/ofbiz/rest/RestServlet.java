@@ -8,7 +8,6 @@ import org.apache.juneau.rest.RestContext;
 import org.apache.juneau.rest.RestRequest;
 import org.apache.juneau.rest.annotation.Rest;
 import org.apache.juneau.rest.annotation.RestMethod;
-import org.apache.juneau.rest.util.UrlPathPattern;
 import org.apache.juneau.rest.util.UrlPathPatternMatch;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.GeneralException;
@@ -130,51 +129,19 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
 
     @RestMethod(method = GET, path = "*")
     public void onGet(RestContext restContext) {
-        RestRequestHandler restRequestHandler = RestRequestHandler.getRestRequestHandler(getServletContext());
+        RestConfigXMLReader.Operation operation = (RestConfigXMLReader.Operation) restContext.getRequest().getAttribute("_OPERATION_");
+        if (operation == null) {
+            // TODO set an error
+        }
+
+        UrlPathPatternMatch urlPathPatternMatch = (UrlPathPatternMatch) restContext.getRequest().getAttribute("_URL_PATH_PATTERN_MATCH_");
 
         try {
-            // TODO find operation
-            FindOperationResult findOperationResult = findOperation(restContext);
-            if (findOperationResult != null) {
-                OperationResult operationResult = restRequestHandler.runOperation(findOperationResult.getOperation(), findOperationResult.getUrlPathPatternMatch(), restContext);
-                restContext.getResponse().setOutput(operationResult.getOutput());
-            } else {
-                // TODO set an error
-            }
+            RestRequestHandler restRequestHandler = RestRequestHandler.getRestRequestHandler(getServletContext());
+            OperationResult operationResult = restRequestHandler.runOperation(operation, urlPathPatternMatch, restContext);
+            restContext.getResponse().setOutput(operationResult.getOutput());
         } catch (GeneralException e) {
             e.printStackTrace();
-        }
-    }
-
-    private FindOperationResult findOperation(RestContext restContext) {
-        RestRequestHandler handler = RestRequestHandler.getRestRequestHandler(getServletContext());
-        RestConfigXMLReader.RestConfig restConfig = handler.getRestConfig();
-        List<RestConfigXMLReader.Operation> operations = restConfig.getOperations(restContext.getRequest().getMethod().toLowerCase());
-        for (RestConfigXMLReader.Operation operation : operations) {
-            UrlPathPattern urlPathPattern = new UrlPathPattern(operation.getPath());
-            UrlPathPatternMatch urlPathPatternMatch = urlPathPattern.match(restContext.getRequest().getPathInfo());
-            if (urlPathPatternMatch != null) {
-                return new FindOperationResult(operation, urlPathPatternMatch);
-            }
-        }
-        return null;
-    }
-
-    private static class FindOperationResult {
-        private RestConfigXMLReader.Operation operation;
-        private UrlPathPatternMatch urlPathPatternMatch;
-
-        FindOperationResult(RestConfigXMLReader.Operation operation, UrlPathPatternMatch urlPathPatternMatch) {
-            this.operation = operation;
-            this.urlPathPatternMatch = urlPathPatternMatch;
-        }
-
-        public RestConfigXMLReader.Operation getOperation() {
-            return operation;
-        }
-
-        public UrlPathPatternMatch getUrlPathPatternMatch() {
-            return urlPathPatternMatch;
         }
     }
 }
