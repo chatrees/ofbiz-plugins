@@ -70,6 +70,8 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                                     )
                     )
                     .basePath(basePath)
+                    .schemes("https")
+                    .securityDefinition("https", securityScheme("basic"))
                     .consumes(originalSwagger.getConsumes())
                     .produces(originalSwagger.getProduces())
                     .definitions(originalSwagger.getDefinitions())
