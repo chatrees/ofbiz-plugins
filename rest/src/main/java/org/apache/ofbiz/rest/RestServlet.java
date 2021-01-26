@@ -12,6 +12,7 @@ import org.apache.juneau.rest.util.UrlPathPattern;
 import org.apache.juneau.rest.util.UrlPathPatternMatch;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.GeneralException;
+import org.apache.ofbiz.rest.operation.OperationRestGuard;
 import org.apache.ofbiz.rest.operation.OperationResult;
 
 import javax.servlet.ServletException;
@@ -29,6 +30,9 @@ import static org.apache.juneau.http.HttpMethod.OPTIONS;
         },
         parsers = {
                 JsonParser.class,
+        },
+        guards = {
+                OperationRestGuard.class,
         }
 )
 public class RestServlet extends org.apache.juneau.rest.RestServlet {
