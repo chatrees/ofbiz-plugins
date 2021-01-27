@@ -91,6 +91,7 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                                 .consumes(MediaType.JSON)
                                 .response("200",
                                         responseInfo("successful operation"))
+                                .security("https")
                 );
             }
             swagger.path("/pet", "get",
