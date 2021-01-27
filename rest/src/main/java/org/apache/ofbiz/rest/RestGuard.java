@@ -1,53 +1,54 @@
-package org.apache.ofbiz.rest.operation;
+package org.apache.ofbiz.rest;
 
 import org.apache.catalina.connector.RequestFacade;
 import org.apache.juneau.http.exception.HttpException;
-import org.apache.juneau.rest.RestGuard;
+import org.apache.juneau.http.exception.NotFound;
 import org.apache.juneau.rest.RestRequest;
 import org.apache.juneau.rest.RestResponse;
 import org.apache.juneau.rest.util.UrlPathPattern;
 import org.apache.juneau.rest.util.UrlPathPatternMatch;
-import org.apache.ofbiz.rest.RestConfigXMLReader;
-import org.apache.ofbiz.rest.RestRequestHandler;
 
 import javax.servlet.ServletContext;
 import java.util.List;
 
-public class OperationRestGuard extends RestGuard {
+public class RestGuard extends org.apache.juneau.rest.RestGuard {
+
+    protected boolean isSwaggerRequest(RestRequest req) {
+        String method = req.getMethod();
+        String pathInfo = req.getPathInfo();
+        return pathInfo ==  null && "OPTIONS".equals(method);
+    }
 
     @Override
     public boolean isRequestAllowed(RestRequest req) {
-        String method = req.getMethod();
-        String pathInfo = req.getPathInfo();
-        if (pathInfo ==  null && "OPTIONS".equals(method)) { // Swagger JSON request
-            return true;
-        }
-
-        // TODO check user login
         return true;
     }
 
     @Override
     public boolean guard(RestRequest req, RestResponse res) throws HttpException {
-        boolean allowed = super.guard(req, res);
+        if (isSwaggerRequest(req)) {
+            return true;
+        }
+
         ServletContext servletContext =((RequestFacade) req.getRequest()).getServletContext();
         RestRequestHandler handler = RestRequestHandler.getRestRequestHandler(servletContext);
         RestConfigXMLReader.RestConfig restConfig = handler.getRestConfig();
         List<RestConfigXMLReader.Operation> operations = restConfig.getOperations(req.getMethod().toLowerCase());
         if (operations == null) {
-            return allowed;
+            throw new NotFound();
         }
-
+        super.guard(req, res);
         for (RestConfigXMLReader.Operation operation : operations) {
             UrlPathPattern urlPathPattern = new UrlPathPattern(operation.getPath());
             UrlPathPatternMatch urlPathPatternMatch = urlPathPattern.match(req.getPathInfo());
             if (urlPathPatternMatch != null) {
                 req.setAttribute("_OPERATION_", operation);
                 req.setAttribute("_URL_PATH_PATTERN_MATCH_", urlPathPatternMatch);
-                return allowed;
+
+                // TODO check user login
+                return true;
             }
         }
-
-        return allowed;
+        throw new NotFound();
     }
 }
