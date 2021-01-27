@@ -182,6 +182,7 @@ public final class RestConfigXMLReader {
         private final String id;
         private final String method;
         private final String path;
+        private final Security security;
         private final Element handlerElement;
         private final Map<String, Tag> tags;
         public Operation(Element element, Resource resource) throws GeneralException {
@@ -194,6 +195,14 @@ public final class RestConfigXMLReader {
             this.path = "/" + resourcePath;
             this.handlerElement = getHandlerElement(element);
             this.tags = createTags(element);
+
+            // security
+            Element securityElement = UtilXml.firstChildElement(element, "security");
+            if (securityElement != null) {
+                this.security = new Security(securityElement);
+            } else {
+                this.security = new Security();
+            }
         }
 
         private String createResourcePath(Resource resource) {
@@ -247,12 +256,39 @@ public final class RestConfigXMLReader {
             return path;
         }
 
+        public Security getSecurity() {
+            return security;
+        }
+
         public Element getHandlerElement() {
             return handlerElement;
         }
 
         public Map<String, Tag> getTags() {
             return tags;
+        }
+    }
+
+    public static class Security {
+        private final boolean https;
+        private final boolean auth;
+
+        Security(Element element) {
+            https = "true".equals(element.getAttribute("https"));
+            auth = "true".equals(element.getAttribute("auth"));
+        }
+
+        Security() {
+            https = false;
+            auth = false;
+        }
+
+        public boolean isHttps() {
+            return https;
+        }
+
+        public boolean isAuth() {
+            return auth;
         }
     }
 }

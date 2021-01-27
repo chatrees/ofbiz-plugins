@@ -72,7 +72,8 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                                     )
                     )
                     .basePath(basePath)
-                    .schemes("https")
+                    .schemes("http", "https")
+                    .securityDefinition("http", securityScheme("basic"))
                     .securityDefinition("https", securityScheme("basic"))
                     .consumes(originalSwagger.getConsumes())
                     .produces(originalSwagger.getProduces())
@@ -82,8 +83,10 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                     );
 
             for (RestConfigXMLReader.Operation operation : operations) {
+                RestConfigXMLReader.Security security = operation.getSecurity();
                 String path = operation.getPath();
                 String methodName = operation.getMethod();
+                String scheme = security.isHttps() ? "https" : "http";
                 swagger.path(path, methodName,
                         operation()
                                 .tags("pet")
@@ -91,7 +94,7 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                                 .consumes(MediaType.JSON)
                                 .response("200",
                                         responseInfo("successful operation"))
-                                .security("https")
+                                .security(scheme)
                 );
             }
             swagger.path("/pet", "get",

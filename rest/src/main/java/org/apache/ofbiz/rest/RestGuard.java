@@ -98,7 +98,10 @@ public class RestGuard extends org.apache.juneau.rest.RestGuard {
             UrlPathPattern urlPathPattern = new UrlPathPattern(operation.getPath());
             UrlPathPatternMatch urlPathPatternMatch = urlPathPattern.match(req.getPathInfo());
             if (urlPathPatternMatch != null) {
-                logInUser(req);
+                RestConfigXMLReader.Security security = operation.getSecurity();
+                if (security.isAuth()) {
+                    logInUser(req);
+                }
                 req.setAttribute("_OPERATION_", operation);
                 req.setAttribute("_URL_PATH_PATTERN_MATCH_", urlPathPatternMatch);
                 return true;

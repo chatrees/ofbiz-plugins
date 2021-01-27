@@ -2,20 +2,24 @@
 <rest-conf>
     <resource name="resource1">
         <operation method="get">
+            <security https="false" auth="false"/>
             <handler><service/></handler>
         </operation>
         <resource name="resource3">
             <operation method="get">
+                <security https="true" auth="false"/>
                 <handler><service/></handler>
             </operation>
         </resource>
     </resource>
     <resource name="resource2">
         <operation method="get">
+            <security https="true" auth="true"/>
             <handler><entity name="Example" action="list"/></handler>
         </operation>
         <variable name="resource2Id">
             <operation method="get">
+                <security https="true" auth="true"/>
                 <handler><entity action="one"/></handler>
             </operation>
         </variable>
