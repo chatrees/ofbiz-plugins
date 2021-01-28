@@ -64,6 +64,8 @@ public final class RestConfigXMLReader {
 
     public static class RestConfig {
 
+        private final String title;
+        private final String description;
         private final List<Operation> operations = new ArrayList<>();
         private final Map<String, List<Operation>> methodOperationNodesMap = new HashMap<>();
         private final Map<String, Tag> tags = new HashMap<>();
@@ -71,7 +73,24 @@ public final class RestConfigXMLReader {
         public RestConfig(URL url) throws WebAppConfigurationException {
             Element rootElement = loadDocument(url);
             if (rootElement != null) {
+                Element titleElement = UtilXml.firstChildElement(rootElement, "title");
+                if (titleElement != null) {
+                    title = titleElement.getTextContent();
+                } else {
+                    title = null;
+                }
+
+                Element descriptionElement = UtilXml.firstChildElement(rootElement, "description");
+                if (descriptionElement != null) {
+                    description = descriptionElement.getTextContent();
+                } else {
+                    description = null;
+                }
+
                 loadResource(rootElement);
+            } else {
+                title = null;
+                description = null;
             }
         }
 
@@ -104,8 +123,16 @@ public final class RestConfigXMLReader {
             }
         }
 
+        public String getTitle() {
+            return title;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
         public List<Operation> getOperations() {
-            return operations;
+            return Collections.unmodifiableList(operations);
         }
 
         public List<Operation> getOperations(String method) {
@@ -153,6 +180,10 @@ public final class RestConfigXMLReader {
             }
         }
 
+        public String getName() {
+            return name;
+        }
+
         public String getPathComponent() {
             return name;
         }
@@ -185,8 +216,10 @@ public final class RestConfigXMLReader {
         private final Security security;
         private final Element handlerElement;
         private final Map<String, Tag> tags;
+        private final List<VariableResource> variableResources = new ArrayList<>();
+        private String resourcePath;
         public Operation(Element element, Resource resource) throws GeneralException {
-            String resourcePath = createResourcePath(resource);
+            loadResource(resource);
             String id = StringUtil.replaceString(resourcePath, "{", "");
             id = StringUtil.replaceString(id, "}", "");
             id = StringUtil.replaceString(id, "/", "_");
@@ -205,15 +238,18 @@ public final class RestConfigXMLReader {
             }
         }
 
-        private String createResourcePath(Resource resource) {
+        private void loadResource(Resource resource) {
             List<String> pathComponents = new ArrayList<>();
             Resource current = resource;
             do {
+                if (current instanceof VariableResource) {
+                    variableResources.add((VariableResource) current);
+                }
                 pathComponents.add(current.getPathComponent());
                 current = current.parent;
             } while (current != null);
             Collections.reverse(pathComponents);
-            return StringUtil.join(pathComponents, "/");
+            this.resourcePath = StringUtil.join(pathComponents, "/");
         }
 
         private Element getHandlerElement(Element element) throws GeneralException {
@@ -262,6 +298,10 @@ public final class RestConfigXMLReader {
 
         public Element getHandlerElement() {
             return handlerElement;
+        }
+
+        public List<VariableResource> getVariableResources() {
+            return Collections.unmodifiableList(variableResources);
         }
 
         public Map<String, Tag> getTags() {

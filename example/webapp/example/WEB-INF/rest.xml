@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rest-conf>
+    <title>Apache OFBiz - Example Application</title>
+    <description>Example Application of the Apache OFBiz Project</description>
+
     <resource name="resource1">
         <operation method="get">
             <security https="false" auth="false"/>

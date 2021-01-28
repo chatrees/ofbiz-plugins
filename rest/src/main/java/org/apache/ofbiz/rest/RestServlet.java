@@ -1,5 +1,6 @@
 package org.apache.ofbiz.rest;
 
+import org.apache.juneau.dto.swagger.ParameterInfo;
 import org.apache.juneau.dto.swagger.Swagger;
 import org.apache.juneau.http.MediaType;
 import org.apache.juneau.json.JsonParser;
@@ -11,9 +12,13 @@ import org.apache.juneau.rest.annotation.RestMethod;
 import org.apache.juneau.rest.util.UrlPathPatternMatch;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.GeneralException;
+import org.apache.ofbiz.base.util.UtilMisc;
 import org.apache.ofbiz.rest.operation.OperationResult;
 
 import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.apache.juneau.dto.swagger.SwaggerBuilder.*;
@@ -45,6 +50,8 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
 
     @RestMethod(method = OPTIONS, path = "/", consumes = {})
     public Swagger getOptions(RestRequest req) {
+        HttpServletRequest httpServletRequest = (HttpServletRequest) req.getRequest();
+        req.getSession().getServletContext().getServletContextName();
         String basePath = req.getContextPath() + req.getServletPath();
 
         Swagger originalSwagger = req.getSwagger();
@@ -61,8 +68,8 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
             Swagger swagger = swagger()
                     .swagger("2.0")
                     .info(
-                            info("Swagger Petstore", "1.0.0")
-                                    .description("This is a sample server Petstore server.")
+                            info(restConfig.getTitle(), "1.0.0")
+                                    .description(restConfig.getDescription())
                                     .termsOfService("http://swagger.io/terms/")
                                     .contact(
                                             contact().email("apiteam@swagger.io")
@@ -72,9 +79,6 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                                     )
                     )
                     .basePath(basePath)
-                    .schemes("http", "https")
-                    .securityDefinition("http", securityScheme("basic"))
-                    .securityDefinition("https", securityScheme("basic"))
                     .consumes(originalSwagger.getConsumes())
                     .produces(originalSwagger.getProduces())
                     .definitions(originalSwagger.getDefinitions())
@@ -82,16 +86,34 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                             tag("pet").description("Pet")
                     );
 
+            // schema and security
+            List<String> schemes = UtilMisc.toList("http", "https");
+            if (req.isSecure()) {
+                Collections.reverse(schemes);
+            }
+            for (String schema : schemes) {
+                swagger.securityDefinition(schema, securityScheme("basic").description(schema));
+            }
+            swagger.schemes(schemes);
+
             for (RestConfigXMLReader.Operation operation : operations) {
                 RestConfigXMLReader.Security security = operation.getSecurity();
                 String path = operation.getPath();
                 String methodName = operation.getMethod();
                 String scheme = security.isHttps() ? "https" : "http";
+                List<ParameterInfo> parameterInfos = new ArrayList<>();
+
+                // path parameters
+                for (RestConfigXMLReader.VariableResource variableResource : operation.getVariableResources()) {
+                    parameterInfos.add(parameterInfo("path", variableResource.getName())
+                            .required(true).schema(schemaInfo().type("String")));
+                }
                 swagger.path(path, methodName,
                         operation()
                                 .tags("pet")
                                 .operationId(operation.getId())
                                 .consumes(MediaType.JSON)
+                                .parameters(parameterInfos)
                                 .response("200",
                                         responseInfo("successful operation"))
                                 .security(scheme)
