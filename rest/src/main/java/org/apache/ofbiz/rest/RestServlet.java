@@ -16,7 +16,6 @@ import org.apache.ofbiz.base.util.UtilMisc;
 import org.apache.ofbiz.rest.operation.OperationResult;
 
 import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -50,7 +49,6 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
 
     @RestMethod(method = OPTIONS, path = "/", consumes = {})
     public Swagger getOptions(RestRequest req) {
-        HttpServletRequest httpServletRequest = (HttpServletRequest) req.getRequest();
         req.getSession().getServletContext().getServletContextName();
         String basePath = req.getContextPath() + req.getServletPath();
 
@@ -62,7 +60,7 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
             RestConfigXMLReader.RestConfig restConfig = restRequestHandler.getRestConfig();
             List<RestConfigXMLReader.Operation> operations = restConfig.getOperations();
             for (RestConfigXMLReader.Operation operation : operations) {
-
+                // TODO generate tags
             }
 
             Swagger swagger = swagger()
@@ -83,7 +81,8 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                     .produces(originalSwagger.getProduces())
                     .definitions(originalSwagger.getDefinitions())
                     .tags(
-                            tag("pet").description("Pet")
+                            // TODO
+                            //tag("pet").description("Pet")
                     );
 
             // schema and security
@@ -106,11 +105,19 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                 // path parameters
                 for (RestConfigXMLReader.VariableResource variableResource : operation.getVariableResources()) {
                     parameterInfos.add(parameterInfo("path", variableResource.getName())
-                            .required(true).schema(schemaInfo().type("String")));
+                            // TODO
+                            //.description()
+                            .required(true)
+                            .type(String.class.getSimpleName().toLowerCase())
+                            // TODO
+                            //.example()
+                    );
                 }
                 swagger.path(path, methodName,
                         operation()
-                                .tags("pet")
+                                // TODO
+                                //.tags("pet")
+
                                 .operationId(operation.getId())
                                 .consumes(MediaType.JSON)
                                 .parameters(parameterInfos)
@@ -119,31 +126,6 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                                 .security(scheme)
                 );
             }
-            swagger.path("/pet", "get",
-                            operation()
-                            .tags("pet")
-                            .operationId("getPet")
-                            .consumes(MediaType.JSON)
-                            .response("200",
-                                    responseInfo("successful operation"))
-                    )
-                    .path("/pet", "post",
-                            operation()
-                                    .tags("pet")
-                                    .summary("Add a new pet to the store")
-                                    .description("")
-                                    .operationId("addPet")
-                                    .consumes(MediaType.JSON, MediaType.XML)
-                                    .produces(MediaType.JSON, MediaType.XML)
-                                    .parameters(
-                                            parameterInfo("body", "body")
-                                                    .description("Pet object that needs to be added to the store")
-                                                    .required(true)
-                                                    .type("String")
-                                                    .example("body 1")
-                                    )
-                                    .response("405", responseInfo("Invalid input"))
-                    );
 
             return swagger;
         } catch (Exception e) {
