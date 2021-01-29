@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rest-conf>
+    <title>Apache OFBiz - Example Application</title>
+    <description>Example Application of the Apache OFBiz Project</description>
+
+    <resource name="examples">
+        <operation method="get">
+            <security https="false" auth="false"/>
+            <handler><service/></handler>
+        </operation>
+        <variable name="exampleId">
+            <operation method="get">
+                <security https="true" auth="false"/>
+                <handler><service/></handler>
+            </operation>
+            <resource name="items">
+                <operation method="get">
+                    <security https="true" auth="false"/>
+                    <handler><service/></handler>
+                </operation>
+            </resource>
+        </variable>
+    </resource>
+    <resource name="exampleFeatures">
+        <operation method="get">
+            <security https="true" auth="true"/>
+            <handler><entity name="Example" action="list"/></handler>
+        </operation>
+        <variable name="exampleFeatureId">
+            <operation method="get">
+                <security https="true" auth="true"/>
+                <handler><entity action="one"/></handler>
+            </operation>
+        </variable>
+    </resource>
+</rest-conf>

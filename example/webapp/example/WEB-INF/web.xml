@@ -48,7 +48,7 @@ under the License.
         <filter-class>org.apache.ofbiz.webapp.control.ControlFilter</filter-class>
         <init-param>
             <param-name>allowedPaths</param-name>
-            <param-value>/error:/control:/rest:/swagger-ui:/select:/index.html:/index.jsp:/default.html:/default.jsp:/images:/js:/ws</param-value>
+            <param-value>/error:/control:/select:/index.html:/index.jsp:/default.html:/default.jsp:/images:/js:/ws</param-value>
         </init-param>
         <init-param>
             <param-name>redirectPath</param-name>
@@ -90,27 +90,7 @@ under the License.
         <servlet-class>org.apache.ofbiz.webapp.control.ControlServlet</servlet-class>
         <load-on-startup>1</load-on-startup>
     </servlet>
-    <servlet>
-        <description>REST Servlet</description>
-        <display-name>RestServlet</display-name>
-        <servlet-name>RestServlet</servlet-name>
-        <servlet-class>org.apache.ofbiz.rest.RestServlet</servlet-class>
-        <load-on-startup>1</load-on-startup>
-    </servlet>
-    <servlet>
-        <description>Swagger UI Servlet</description>
-        <display-name>SwaggerUIServlet</display-name>
-        <servlet-name>SwaggerUIServlet</servlet-name>
-        <servlet-class>org.apache.ofbiz.rest.swagger.ui.SwaggerUIServlet</servlet-class>
-        <init-param>
-            <param-name>restPath</param-name>
-            <param-value>/rest</param-value>
-        </init-param>
-        <load-on-startup>1</load-on-startup>
-    </servlet>
     <servlet-mapping><servlet-name>ControlServlet</servlet-name><url-pattern>/control/*</url-pattern></servlet-mapping>
-    <servlet-mapping><servlet-name>RestServlet</servlet-name><url-pattern>/rest/*</url-pattern></servlet-mapping>
-    <servlet-mapping><servlet-name>SwaggerUIServlet</servlet-name><url-pattern>/swagger-ui/*</url-pattern></servlet-mapping>
 
     <session-config>
         <session-timeout>60</session-timeout><!-- in minutes -->

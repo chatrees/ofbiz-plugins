@@ -50,4 +50,9 @@ under the License.
         location="webapp/rest"
         base-permission="OFBTOOLS,REST"
         mount-point="/rest"/>
+    <webapp name="restexample"
+            title="Rest Example"
+            server="default-server"
+            location="webapp/restexample"
+            mount-point="/restexample"/>
 </ofbiz-component>

@@ -34,5 +34,12 @@ under the License.
             </widgets>
         </section>
     </screen>
+    <screen name="swagger">
+        <section>
+            <widgets>
+                <platform-specific><html><html-template location="component://rest/template/swagger.ftl"/></html></platform-specific>
+            </widgets>
+        </section>
+    </screen>
 
 </screens>
