@@ -99,9 +99,6 @@ public final class RestConfigXMLReader {
                 for (Element resourceElement : UtilXml.childElementList(root, "resource")) {
                     Resource resource = new Resource(resourceElement, null);
                     loadResource(resource);
-                    for (Resource childResource : resource.getChildResourceMap().values()) {
-                        loadResource(childResource);
-                    }
                 }
             } catch (GeneralException e) {
                 throw new WebAppConfigurationException(e);
@@ -120,6 +117,11 @@ public final class RestConfigXMLReader {
 
                 // add tags
                 tags.putAll(operation.getTags());
+
+                // load children
+                for (Resource childResource : resource.getChildResourceMap().values()) {
+                    loadResource(childResource);
+                }
             }
         }
 
