@@ -6,7 +6,7 @@
     <resource name="examples">
         <operation method="get">
             <security https="false" auth="false"/>
-            <handler><service/></handler>
+            <handler><entity name="Example" action="list"/></handler>
         </operation>
         <variable name="exampleId">
             <operation method="get">

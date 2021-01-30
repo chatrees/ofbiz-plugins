@@ -27,8 +27,6 @@ public class ServiceOperationHandler implements OperationHandler {
         // TODO set fields returned from calling an event
         output.put("text", "Response from Service handler.");
 
-        OperationResult result = new OperationResult();
-        result.setOutput(output);
-        return result;
+        return OperationResult.ok(output);
     }
 }

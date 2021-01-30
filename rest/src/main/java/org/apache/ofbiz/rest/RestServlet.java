@@ -7,18 +7,21 @@ import org.apache.juneau.json.JsonParser;
 import org.apache.juneau.json.JsonSerializer;
 import org.apache.juneau.rest.RestContext;
 import org.apache.juneau.rest.RestRequest;
+import org.apache.juneau.rest.RestResponse;
 import org.apache.juneau.rest.annotation.Rest;
 import org.apache.juneau.rest.annotation.RestMethod;
 import org.apache.juneau.rest.util.UrlPathPatternMatch;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.GeneralException;
 import org.apache.ofbiz.base.util.UtilMisc;
+import org.apache.ofbiz.base.util.UtilValidate;
 import org.apache.ofbiz.rest.operation.OperationResult;
 
 import javax.servlet.ServletException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.juneau.dto.swagger.SwaggerBuilder.*;
 import static org.apache.juneau.http.HttpMethod.GET;
@@ -136,6 +139,7 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
 
     @RestMethod(method = GET, path = "*")
     public void onGet(RestContext restContext) {
+        RestResponse restResponse = restContext.getResponse();
         RestConfigXMLReader.Operation operation = (RestConfigXMLReader.Operation) restContext.getRequest().getAttribute("_OPERATION_");
         if (operation == null) {
             // TODO set an error
@@ -146,7 +150,17 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
         try {
             RestRequestHandler restRequestHandler = RestRequestHandler.getRestRequestHandler(getServletContext());
             OperationResult operationResult = restRequestHandler.runOperation(operation, urlPathPatternMatch, restContext);
-            restContext.getResponse().setOutput(operationResult.getOutput());
+
+            // headers
+            Map<String, String> headers = operationResult.getHeaders();
+            if (UtilValidate.isNotEmpty(headers)) {
+                for (String headerName : headers.keySet()) {
+                    String headerValue = headers.get(headerName);
+                    restResponse.setHeader(headerName, headerValue);
+                }
+            }
+
+            restResponse.setOutput(operationResult.getOutput());
         } catch (GeneralException e) {
             e.printStackTrace();
         }
