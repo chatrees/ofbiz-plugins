@@ -50,10 +50,14 @@ public final class RestRequestHandler {
         return null;
     }
 
-    public OperationResult runOperation(RestConfigXMLReader.Operation operation, UrlPathPatternMatch urlPathPatternMatch, RestContext restContext) throws OperationHandlerException {
+    public OperationHandler getOperationHandler(RestConfigXMLReader.Operation operation) throws OperationHandlerException {
         Element handlerElement = operation.getHandlerElement();
         String handlerType = handlerElement.getTagName();
-        OperationHandler operationHandler = operationHandlerFactory.getOperationHandler(handlerType);
+        return operationHandlerFactory.getOperationHandler(handlerType);
+    }
+
+    public OperationResult runOperation(RestConfigXMLReader.Operation operation, UrlPathPatternMatch urlPathPatternMatch, RestContext restContext) throws OperationHandlerException {
+        OperationHandler operationHandler = getOperationHandler(operation);
         return operationHandler.invoke(operation, urlPathPatternMatch, restContext);
     }
 }

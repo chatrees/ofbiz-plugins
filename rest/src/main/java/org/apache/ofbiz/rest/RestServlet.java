@@ -1,6 +1,5 @@
 package org.apache.ofbiz.rest;
 
-import org.apache.juneau.dto.swagger.ParameterInfo;
 import org.apache.juneau.dto.swagger.Swagger;
 import org.apache.juneau.http.MediaType;
 import org.apache.juneau.json.JsonParser;
@@ -15,10 +14,10 @@ import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.GeneralException;
 import org.apache.ofbiz.base.util.UtilMisc;
 import org.apache.ofbiz.base.util.UtilValidate;
+import org.apache.ofbiz.rest.operation.OperationHandler;
 import org.apache.ofbiz.rest.operation.OperationResult;
 
 import javax.servlet.ServletException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -99,23 +98,11 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
             swagger.schemes(schemes);
 
             for (RestConfigXMLReader.Operation operation : operations) {
+                OperationHandler operationHandler = restRequestHandler.getOperationHandler(operation);
                 RestConfigXMLReader.Security security = operation.getSecurity();
                 String path = operation.getPath();
                 String methodName = operation.getMethod();
                 String scheme = security.isHttps() ? "https" : "http";
-                List<ParameterInfo> parameterInfos = new ArrayList<>();
-
-                // path parameters
-                for (RestConfigXMLReader.VariableResource variableResource : operation.getVariableResources()) {
-                    parameterInfos.add(parameterInfo("path", variableResource.getName())
-                            // TODO
-                            //.description()
-                            .required(true)
-                            .type(String.class.getSimpleName().toLowerCase())
-                            // TODO
-                            //.example()
-                    );
-                }
                 swagger.path(path, methodName,
                         operation()
                                 // TODO
@@ -123,7 +110,7 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
 
                                 .operationId(operation.getId())
                                 .consumes(MediaType.JSON)
-                                .parameters(parameterInfos)
+                                .parameters(operationHandler.getParametersInfos(operation, req))
                                 .response("200",
                                         responseInfo("successful operation"))
                                 .security(scheme)

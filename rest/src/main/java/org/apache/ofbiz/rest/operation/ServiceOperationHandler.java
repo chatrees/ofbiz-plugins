@@ -1,11 +1,14 @@
 package org.apache.ofbiz.rest.operation;
 
+import org.apache.juneau.dto.swagger.ParameterInfo;
 import org.apache.juneau.rest.RestContext;
+import org.apache.juneau.rest.RestRequest;
 import org.apache.juneau.rest.util.UrlPathPatternMatch;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.rest.RestConfigXMLReader;
 
 import javax.servlet.ServletContext;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,6 +19,11 @@ public class ServiceOperationHandler implements OperationHandler {
     @Override
     public void init(ServletContext context) throws OperationHandlerException {
 
+    }
+
+    @Override
+    public Collection<ParameterInfo> getParametersInfos(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
+        return null;
     }
 
     @Override

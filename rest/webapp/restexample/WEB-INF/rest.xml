@@ -11,7 +11,7 @@
         <variable name="exampleId">
             <operation method="get">
                 <security https="true" auth="false"/>
-                <handler><service/></handler>
+                <handler><entity name="Example" action="one"/></handler>
             </operation>
             <resource name="items">
                 <operation method="get">
@@ -24,12 +24,12 @@
     <resource name="exampleFeatures">
         <operation method="get">
             <security https="true" auth="true"/>
-            <handler><entity name="Example" action="list"/></handler>
+            <handler><entity name="ExampleFeature" action="list"/></handler>
         </operation>
         <variable name="exampleFeatureId">
             <operation method="get">
                 <security https="true" auth="true"/>
-                <handler><entity action="one"/></handler>
+                <handler><entity name="ExampleFeature" action="one"/></handler>
             </operation>
         </variable>
     </resource>
