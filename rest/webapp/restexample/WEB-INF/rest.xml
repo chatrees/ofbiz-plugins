@@ -8,15 +8,31 @@
             <security https="false" auth="false"/>
             <handler><entity name="Example" action="list"/></handler>
         </operation>
+        <operation method="post">
+            <security https="true" auth="true"/>
+            <handler><service name="createExample"/></handler>
+        </operation>
         <variable name="exampleId">
             <operation method="get">
                 <security https="true" auth="false"/>
                 <handler><entity name="Example" action="one"/></handler>
             </operation>
+            <operation method="patch">
+                <security https="true" auth="true"/>
+                <handler><service name="updateExample"/></handler>
+            </operation>
+            <operation method="put">
+                <security https="true" auth="true"/>
+                <handler><service name="updateExample"/></handler>
+            </operation>
+            <operation method="delete">
+                <security https="true" auth="true"/>
+                <handler><service name="deleteExample"/></handler>
+            </operation>
             <resource name="items">
                 <operation method="get">
                     <security https="true" auth="false"/>
-                    <handler><service/></handler>
+                    <handler><entity name="ExampleItem" action="list"/></handler>
                 </operation>
             </resource>
         </variable>
@@ -26,10 +42,26 @@
             <security https="true" auth="true"/>
             <handler><entity name="ExampleFeature" action="list"/></handler>
         </operation>
+        <operation method="post">
+            <security https="true" auth="true"/>
+            <handler><entity name="ExampleFeature" action="create"/></handler>
+        </operation>
         <variable name="exampleFeatureId">
             <operation method="get">
                 <security https="true" auth="true"/>
                 <handler><entity name="ExampleFeature" action="one"/></handler>
+            </operation>
+            <operation method="patch">
+                <security https="true" auth="true"/>
+                <handler><entity name="ExampleFeature" action="update"/></handler>
+            </operation>
+            <operation method="put">
+                <security https="true" auth="true"/>
+                <handler><entity name="ExampleFeature" action="store"/></handler>
+            </operation>
+            <operation method="delete">
+                <security https="true" auth="true"/>
+                <handler><entity name="ExampleFeature" action="delete"/></handler>
             </operation>
         </variable>
     </resource>

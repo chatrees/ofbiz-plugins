@@ -222,11 +222,11 @@ public final class RestConfigXMLReader {
         private String resourcePath;
         public Operation(Element element, Resource resource) throws GeneralException {
             loadResource(resource);
-            String id = StringUtil.replaceString(resourcePath, "{", "");
+            this.method = element.getAttribute("method");
+            String id = method + "_" + StringUtil.replaceString(resourcePath, "{", "");
             id = StringUtil.replaceString(id, "}", "");
             id = StringUtil.replaceString(id, "/", "_");
             this.id = id;
-            this.method = element.getAttribute("method");
             this.path = "/" + resourcePath;
             this.handlerElement = getHandlerElement(element);
             this.tags = createTags(element);

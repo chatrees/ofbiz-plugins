@@ -17,8 +17,10 @@ import org.w3c.dom.Element;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
+import java.math.BigDecimal;
 import java.util.*;
 
+import static org.apache.juneau.dto.swagger.SwaggerBuilder.parameterInfo;
 import static org.apache.ofbiz.webapp.event.ServiceEventHandler.ASYNC;
 import static org.apache.ofbiz.webapp.event.ServiceEventHandler.SYNC;
 
@@ -33,7 +35,55 @@ public class ServiceOperationHandler implements OperationHandler {
 
     @Override
     public Collection<ParameterInfo> getParametersInfos(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
-        return null;
+        LocalDispatcher dispatcher = (LocalDispatcher) restRequest.getAttribute("dispatcher");
+        if (dispatcher == null) {
+            throw new InternalServerError("The local service dispatcher is null");
+        }
+        DispatchContext dctx = dispatcher.getDispatchContext();
+        if (dctx == null) {
+            throw new InternalServerError("Dispatch context cannot be found");
+        }
+
+        Map<String, ParameterInfo> parameterInfoMap = new HashMap<>();
+
+        Element handlerElement = operation.getHandlerElement();
+        String serviceName = getServiceName(handlerElement);
+        ModelService modelService = getModelService(dctx, serviceName);
+
+        // path parameters
+        for (RestConfigXMLReader.VariableResource variableResource : operation.getVariableResources()) {
+            String parameterName = variableResource.getName();
+            ModelParam modelParam = modelService.getParam(parameterName);
+            ParameterInfo parameterInfo = parameterInfo("path", parameterName)
+                    .required(true)
+                    .type(String.class.getSimpleName().toLowerCase());
+            // TODO
+            //.example()
+
+            if (modelParam != null) {
+                parameterInfo.setDescription(modelParam.getShortDisplayDescription());
+            }
+
+            parameterInfoMap.put(parameterName, parameterInfo);
+        }
+
+        for (ModelParam modelParam: modelService.getInModelParamList()) {
+            String fieldName = modelParam.getFieldName();
+
+            /*
+             * @see Data Types
+             * https://swagger.io/docs/specification/data-models/data-types/
+             *
+             * org.apache.ofbiz.widget.model.ModelFormFieldBuilder.induceFieldInfoFromServiceParam(org.apache.ofbiz.service.ModelService, org.apache.ofbiz.service.ModelParam, java.lang.String)
+             * org.apache.ofbiz.base.util.ObjectType.simpleTypeOrObjectConvert(java.lang.Object, java.lang.String, java.lang.String, java.util.TimeZone, java.util.Locale, boolean)
+             */
+            parameterInfoMap.put(fieldName, parameterInfo("body", fieldName)
+                    .description(modelParam.getShortDisplayDescription())
+                    .required(!modelParam.isOptional())
+                    .type(getModelParamSwaggerDataType(modelParam)));
+        }
+
+        return parameterInfoMap.values();
     }
 
     @Override
@@ -55,7 +105,6 @@ public class ServiceOperationHandler implements OperationHandler {
 
         // get the details for the service(s) to call
         String mode = SYNC;
-        String serviceName = null;
 
         String modeAttr = handlerElement.getAttribute("mode");
         if (UtilValidate.isNotEmpty(modeAttr)) {
@@ -63,10 +112,7 @@ public class ServiceOperationHandler implements OperationHandler {
         }
 
         // make sure we have a defined service to call
-        serviceName = handlerElement.getAttribute("name");
-        if (serviceName == null) {
-            throw new PreconditionRequired("Service name (eventMethod) cannot be null");
-        }
+        String serviceName = getServiceName(handlerElement);
         if (Debug.verboseOn()) {
             Debug.logVerbose("[Set mode/service]: " + mode + "/" + serviceName, MODULE);
         }
@@ -77,17 +123,7 @@ public class ServiceOperationHandler implements OperationHandler {
         GenericValue userLogin = (GenericValue) restRequest.getAttribute("userLogin");
 
         // get the service model to generate context
-        ModelService model = null;
-
-        try {
-            model = dctx.getModelService(serviceName);
-        } catch (GenericServiceException e) {
-            throw new InternalServerError("Problems getting the service model", e);
-        }
-
-        if (model == null) {
-            throw new InternalServerError("Problems getting the service model");
-        }
+        ModelService model = getModelService(dctx, serviceName);
 
         if (Debug.verboseOn()) {
             Debug.logVerbose("[Processing]: SERVICE Operation", MODULE);
@@ -245,5 +281,52 @@ public class ServiceOperationHandler implements OperationHandler {
         }
 
         return OperationResult.ok(output);
+    }
+
+    private String getServiceName(Element handlerElement) {
+        String serviceName;
+        serviceName = handlerElement.getAttribute("name");
+        if (serviceName == null) {
+            throw new PreconditionRequired("Service name (eventMethod) cannot be null");
+        }
+        return serviceName;
+    }
+
+    private ModelService getModelService(DispatchContext dctx, String serviceName) {
+        ModelService model;
+
+        try {
+            model = dctx.getModelService(serviceName);
+        } catch (GenericServiceException e) {
+            throw new InternalServerError("Problems getting the service model", e);
+        }
+
+        if (model == null) {
+            throw new InternalServerError("Problems getting the service model");
+        }
+
+        return model;
+    }
+
+    private String getModelParamSwaggerDataType(ModelParam modelParam) {
+        String modelParamType = modelParam.getType();
+        String type;
+        if (String.class.getSimpleName().equals(modelParamType) || String.class.getName().equals(modelParamType)) {
+            type = "string";
+        } else if (Integer.class.getSimpleName().equals(modelParamType) || Integer.class.getName().equals(modelParamType)) {
+            type = "integer";
+        } else if (Short.class.getSimpleName().equals(modelParamType) || Short.class.getName().equals(modelParamType) ||
+                Long.class.getSimpleName().equals(modelParamType) || Long.class.getName().equals(modelParamType) ||
+                Double.class.getSimpleName().equals(modelParamType) || Double.class.getName().equals(modelParamType) ||
+                BigDecimal.class.getSimpleName().equals(modelParamType) || BigDecimal.class.getName().equals(modelParamType)) {
+            type = "number";
+        } else if (Boolean.class.getSimpleName().equals(modelParamType) || Boolean.class.getName().equals(modelParamType)) {
+            type = "boolean";
+        } else if (List.class.getSimpleName().equals(modelParamType) || List.class.getName().equals(modelParamType)) {
+            type = "array";
+        } else {
+            type = "object";
+        }
+        return type;
     }
 }
