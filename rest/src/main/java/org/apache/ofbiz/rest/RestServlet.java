@@ -23,8 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.juneau.dto.swagger.SwaggerBuilder.*;
-import static org.apache.juneau.http.HttpMethod.GET;
-import static org.apache.juneau.http.HttpMethod.OPTIONS;
+import static org.apache.juneau.http.HttpMethod.*;
 
 @Rest(
         // Allow OPTIONS requests to be simulated using ?method=OPTIONS query parameter.
@@ -126,6 +125,30 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
 
     @RestMethod(method = GET, path = "*")
     public void onGet(RestContext restContext) {
+        handleRest(restContext);
+    }
+
+    @RestMethod(method = POST, path = "*")
+    public void onPost(RestContext restContext) {
+        handleRest(restContext);
+    }
+
+    @RestMethod(method = PUT, path = "*")
+    public void onPut(RestContext restContext) {
+        handleRest(restContext);
+    }
+
+    @RestMethod(method = PATCH, path = "*")
+    public void onPatch(RestContext restContext) {
+        handleRest(restContext);
+    }
+
+    @RestMethod(method = DELETE, path = "*")
+    public void onDelete(RestContext restContext) {
+        handleRest(restContext);
+    }
+
+    protected void handleRest(RestContext restContext) {
         RestResponse restResponse = restContext.getResponse();
         RestConfigXMLReader.Operation operation = (RestConfigXMLReader.Operation) restContext.getRequest().getAttribute("_OPERATION_");
         if (operation == null) {

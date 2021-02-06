@@ -1,6 +1,8 @@
 package org.apache.ofbiz.rest.operation;
 
+import org.apache.juneau.collections.AMap;
 import org.apache.juneau.dto.swagger.ParameterInfo;
+import org.apache.juneau.http.HttpMethod;
 import org.apache.juneau.http.exception.InternalServerError;
 import org.apache.juneau.http.exception.PreconditionRequired;
 import org.apache.juneau.rest.RestContext;
@@ -18,9 +20,11 @@ import org.w3c.dom.Element;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.util.*;
 
 import static org.apache.juneau.dto.swagger.SwaggerBuilder.parameterInfo;
+import static org.apache.juneau.dto.swagger.SwaggerBuilder.schemaInfo;
 import static org.apache.ofbiz.webapp.event.ServiceEventHandler.ASYNC;
 import static org.apache.ofbiz.webapp.event.ServiceEventHandler.SYNC;
 
@@ -67,20 +71,23 @@ public class ServiceOperationHandler implements OperationHandler {
             parameterInfoMap.put(parameterName, parameterInfo);
         }
 
-        for (ModelParam modelParam: modelService.getInModelParamList()) {
-            String fieldName = modelParam.getFieldName();
+        if (HttpMethod.GET.equals(restRequest.getMethod())) { // not GET
+            Map<String, AMap<String, String>> properties = new HashMap<>();
+            for (ModelParam modelParam: modelService.getInModelParamList()) {
+                String fieldName = modelParam.getFieldName();
+                if (fieldName == null /* userLogin param has no field name */ ||
+                        parameterInfoMap.containsKey(fieldName)
+                ) {
+                    continue;
+                }
 
-            /*
-             * @see Data Types
-             * https://swagger.io/docs/specification/data-models/data-types/
-             *
-             * org.apache.ofbiz.widget.model.ModelFormFieldBuilder.induceFieldInfoFromServiceParam(org.apache.ofbiz.service.ModelService, org.apache.ofbiz.service.ModelParam, java.lang.String)
-             * org.apache.ofbiz.base.util.ObjectType.simpleTypeOrObjectConvert(java.lang.Object, java.lang.String, java.lang.String, java.util.TimeZone, java.util.Locale, boolean)
-             */
-            parameterInfoMap.put(fieldName, parameterInfo("body", fieldName)
-                    .description(modelParam.getShortDisplayDescription())
-                    .required(!modelParam.isOptional())
-                    .type(getModelParamSwaggerDataType(modelParam)));
+                properties.put(fieldName, AMap.of("type", getModelParamSwaggerDataType(modelParam)));
+            }
+
+            if (UtilValidate.isNotEmpty(properties)) {
+                parameterInfoMap.put("payload", parameterInfo("body", "payload")
+                        .schema(schemaInfo().type("object").properties(properties)));
+            }
         }
 
         return parameterInfoMap.values();
@@ -308,10 +315,18 @@ public class ServiceOperationHandler implements OperationHandler {
         return model;
     }
 
+    /**
+     * See "Data Types"
+     * https://swagger.io/docs/specification/data-models/data-types/
+     *
+     * org.apache.ofbiz.widget.model.ModelFormFieldBuilder.induceFieldInfoFromServiceParam(org.apache.ofbiz.service.ModelService, org.apache.ofbiz.service.ModelParam, java.lang.String)
+     * org.apache.ofbiz.base.util.ObjectType.simpleTypeOrObjectConvert(java.lang.Object, java.lang.String, java.lang.String, java.util.TimeZone, java.util.Locale, boolean)
+     */
     private String getModelParamSwaggerDataType(ModelParam modelParam) {
         String modelParamType = modelParam.getType();
         String type;
-        if (String.class.getSimpleName().equals(modelParamType) || String.class.getName().equals(modelParamType)) {
+        if (String.class.getSimpleName().equals(modelParamType) || String.class.getName().equals(modelParamType) ||
+                Timestamp.class.getSimpleName().equals(modelParamType) || Timestamp.class.getName().equals(modelParamType)) {
             type = "string";
         } else if (Integer.class.getSimpleName().equals(modelParamType) || Integer.class.getName().equals(modelParamType)) {
             type = "integer";
