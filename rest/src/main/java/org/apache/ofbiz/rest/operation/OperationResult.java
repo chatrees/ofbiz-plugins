@@ -15,6 +15,10 @@ public class OperationResult {
         this.headers = headers;
     }
 
+    public static OperationResult ok() {
+        return OperationResult.ok(null, null);
+    }
+
     public static OperationResult ok(Object output) {
         return OperationResult.ok(output, null);
     }

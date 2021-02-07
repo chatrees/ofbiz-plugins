@@ -4,6 +4,7 @@ import org.apache.juneau.collections.AMap;
 import org.apache.juneau.dto.swagger.ParameterInfo;
 import org.apache.juneau.http.exception.InternalServerError;
 import org.apache.juneau.http.exception.NotAcceptable;
+import org.apache.juneau.http.exception.PreconditionFailed;
 import org.apache.juneau.rest.RestContext;
 import org.apache.juneau.rest.RestRequest;
 import org.apache.juneau.rest.util.UrlPathPatternMatch;
@@ -39,7 +40,6 @@ public class EntityOperationHandler implements OperationHandler {
     public static final String ACTION_ONE = "one";
     public static final String ACTION_LIST = "list";
     public static final String ACTION_CREATE = "create";
-    public static final String ACTION_UPDATE = "update";
     public static final String ACTION_STORE = "store";
 
     @Override
@@ -95,7 +95,7 @@ public class EntityOperationHandler implements OperationHandler {
                             .type(String.class.getSimpleName().toLowerCase()));
                 }
             }
-        } else if (ACTION_CREATE.equals(action) || ACTION_UPDATE.equals(action) || ACTION_STORE.equals(action)) {
+        } else if (ACTION_CREATE.equals(action) || ACTION_STORE.equals(action)) {
             Map<String, AMap<String, String>> properties = new HashMap<>();
             Iterator<ModelField> iter = modelEntity.getFieldsIterator();
             while (iter.hasNext()) {
@@ -132,7 +132,7 @@ public class EntityOperationHandler implements OperationHandler {
 
         ModelEntity modelEntity = getModelEntity(operation, restRequest);
 
-        if ("list".equals(action)) {
+        if (ACTION_LIST.equals(action)) {
             Map<String, Object> inputFields = new HashMap<>();
             Map<String, Object> performFindListInMap = UtilMisc.toMap(
                     "entityName", entityName,
@@ -160,7 +160,7 @@ public class EntityOperationHandler implements OperationHandler {
             } catch (GenericServiceException e) {
                 throw new InternalServerError(e);
             }
-        } else if ("one".equals(action)) {
+        } else if (ACTION_ONE.equals(action)) {
             // assemble the field map
             Map<String, Object> entityContext = new HashMap<>();
             Map parameters = new HashMap();
@@ -190,6 +190,42 @@ public class EntityOperationHandler implements OperationHandler {
             } catch (GenericEntityException e) {
                 throw new InternalServerError(e);
             }
+        } else if (ACTION_CREATE.equals(action)) {
+            try {
+                Map parameterMap = restRequest.getParameterMap();
+                GenericValue value = delegator.makeValue(entityName);
+                value.setPKFields(parameterMap);
+                value.setNonPKFields(parameterMap);
+                delegator.create(value);
+            } catch (GenericEntityException e) {
+                throw new InternalServerError(e);
+            }
+            return OperationResult.ok();
+        } else if (ACTION_STORE.equals(action)) {
+            try {
+                Map<String, Object> entityContext = new HashMap<>();
+                Map parameterMap = restRequest.getParameterMap();
+                // only need PK fields
+                Iterator<ModelField> iter = modelEntity.getPksIterator();
+                while (iter.hasNext()) {
+                    ModelField curField = iter.next();
+                    String fieldName = curField.getName();
+                    Object fieldValue = null;
+                    if (parameterMap.containsKey(fieldName)) {
+                        fieldValue = parameterMap.get(fieldName);
+                    }
+                    entityContext.put(fieldName, fieldValue);
+                }
+                GenericValue value = delegator.findOne(entityName, entityContext, false);
+                if (UtilValidate.isEmpty(value)) {
+                    throw new PreconditionFailed("Could not find " + entityName + " with " + entityContext);
+                }
+                value.setNonPKFields(parameterMap);
+                delegator.store(value);
+            } catch (GenericEntityException e) {
+                throw new InternalServerError(e);
+            }
+            return OperationResult.ok();
         } else {
             throw new InternalServerError("Unknown entity action: " + action);
         }

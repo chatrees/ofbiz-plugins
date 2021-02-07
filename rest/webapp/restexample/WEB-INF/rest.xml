@@ -53,7 +53,7 @@
             </operation>
             <operation method="patch">
                 <security https="true" auth="true"/>
-                <handler><entity name="ExampleFeature" action="update"/></handler>
+                <handler><entity name="ExampleFeature" action="store"/></handler>
             </operation>
             <operation method="put">
                 <security https="true" auth="true"/>
