@@ -1,5 +1,6 @@
 package org.apache.ofbiz.rest.operation;
 
+import org.apache.juneau.collections.AMap;
 import org.apache.juneau.dto.swagger.ParameterInfo;
 import org.apache.juneau.http.exception.InternalServerError;
 import org.apache.juneau.http.exception.NotAcceptable;
@@ -28,10 +29,18 @@ import java.util.Iterator;
 import java.util.Map;
 
 import static org.apache.juneau.dto.swagger.SwaggerBuilder.parameterInfo;
+import static org.apache.juneau.dto.swagger.SwaggerBuilder.schemaInfo;
 
 public class EntityOperationHandler implements OperationHandler {
 
     private static final String MODULE = EntityOperationHandler.class.getName();
+
+    public static final String ACTION = "action";
+    public static final String ACTION_ONE = "one";
+    public static final String ACTION_LIST = "list";
+    public static final String ACTION_CREATE = "create";
+    public static final String ACTION_UPDATE = "update";
+    public static final String ACTION_STORE = "store";
 
     @Override
     public void init(ServletContext context) throws OperationHandlerException {
@@ -62,7 +71,7 @@ public class EntityOperationHandler implements OperationHandler {
             parameterInfoMap.put(parameterName, parameterInfo);
         }
 
-        if ("one".equals(action)) {
+        if (ACTION_ONE.equals(action)) {
             Iterator<ModelField> iter = modelEntity.getPksIterator();
             while (iter.hasNext()) {
                 ModelField curField = iter.next();
@@ -74,7 +83,7 @@ public class EntityOperationHandler implements OperationHandler {
                             .type(String.class.getSimpleName().toLowerCase()));
                 }
             }
-        } else if ("list".equals(action)) {
+        } else if (ACTION_LIST.equals(action)) {
             Iterator<ModelField> iter = modelEntity.getFieldsIterator();
             while (iter.hasNext()) {
                 ModelField curField = iter.next();
@@ -85,6 +94,24 @@ public class EntityOperationHandler implements OperationHandler {
                             .required(false)
                             .type(String.class.getSimpleName().toLowerCase()));
                 }
+            }
+        } else if (ACTION_CREATE.equals(action) || ACTION_UPDATE.equals(action) || ACTION_STORE.equals(action)) {
+            Map<String, AMap<String, String>> properties = new HashMap<>();
+            Iterator<ModelField> iter = modelEntity.getFieldsIterator();
+            while (iter.hasNext()) {
+                ModelField curField = iter.next();
+                String fieldName = curField.getName();
+
+                properties.put(fieldName, AMap.of("type", getModelFieldSwaggerDataType(curField)));
+            }
+
+            if (UtilValidate.isNotEmpty(properties)) {
+                /*
+                 Describing Request Body
+                 https://swagger.io/docs/specification/2-0/describing-request-body/
+                 */
+                parameterInfoMap.put("payload", parameterInfo("body", "payload")
+                        .schema(schemaInfo().type("object").properties(properties)));
             }
         }
 
@@ -185,6 +212,54 @@ public class EntityOperationHandler implements OperationHandler {
 
     private static String getAction(RestConfigXMLReader.Operation operation) {
         Element entityElement = operation.getHandlerElement();
-        return entityElement.getAttribute("action");
+        return entityElement.getAttribute(ACTION);
+    }
+
+    /**
+     * See "Data Types"
+     * https://swagger.io/docs/specification/data-models/data-types/
+     *
+     * org.apache.ofbiz.widget.model.ModelFormFieldBuilder.induceFieldInfoFromServiceParam(org.apache.ofbiz.service.ModelService, org.apache.ofbiz.service.ModelParam, java.lang.String)
+     * org.apache.ofbiz.base.util.ObjectType.simpleTypeOrObjectConvert(java.lang.Object, java.lang.String, java.lang.String, java.util.TimeZone, java.util.Locale, boolean)
+     */
+    private static String getModelFieldSwaggerDataType(ModelField modelField) {
+        String modelFieldType = modelField.getType();
+        switch (modelFieldType) {
+            case "blob":
+            case "date-time":
+            case "date":
+            case "time":
+            case "id":
+            case "id-long":
+            case "id-vlong":
+            case "indicator":
+            case "very-short":
+            case "short-varchar":
+            case "long-varchar":
+            case "very-long":
+            case "comment":
+            case "description":
+            case "name":
+            case "value":
+            case "credit-card-number":
+            case "credit-card-date":
+            case "email":
+            case "url":
+            case "tel-number":
+                return "string";
+            case "integer":
+                return "integer";
+            case "currency-amount":
+            case "currency-precise":
+            case "fixed-point":
+            case "floating-point":
+            case "numeric":
+                return "number";
+            case "byte-array":
+                return "array";
+            default:
+                return "object";
+        }
+
     }
 }

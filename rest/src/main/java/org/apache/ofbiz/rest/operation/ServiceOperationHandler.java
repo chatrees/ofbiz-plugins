@@ -71,7 +71,7 @@ public class ServiceOperationHandler implements OperationHandler {
             parameterInfoMap.put(parameterName, parameterInfo);
         }
 
-        if (HttpMethod.GET.equals(restRequest.getMethod())) { // not GET
+        if (!HttpMethod.GET.equalsIgnoreCase(operation.getMethod())) { // not GET
             Map<String, AMap<String, String>> properties = new HashMap<>();
             for (ModelParam modelParam: modelService.getInModelParamList()) {
                 String fieldName = modelParam.getFieldName();
@@ -85,6 +85,10 @@ public class ServiceOperationHandler implements OperationHandler {
             }
 
             if (UtilValidate.isNotEmpty(properties)) {
+                /*
+                 Describing Request Body
+                 https://swagger.io/docs/specification/2-0/describing-request-body/
+                 */
                 parameterInfoMap.put("payload", parameterInfo("body", "payload")
                         .schema(schemaInfo().type("object").properties(properties)));
             }
@@ -322,7 +326,7 @@ public class ServiceOperationHandler implements OperationHandler {
      * org.apache.ofbiz.widget.model.ModelFormFieldBuilder.induceFieldInfoFromServiceParam(org.apache.ofbiz.service.ModelService, org.apache.ofbiz.service.ModelParam, java.lang.String)
      * org.apache.ofbiz.base.util.ObjectType.simpleTypeOrObjectConvert(java.lang.Object, java.lang.String, java.lang.String, java.util.TimeZone, java.util.Locale, boolean)
      */
-    private String getModelParamSwaggerDataType(ModelParam modelParam) {
+    private static String getModelParamSwaggerDataType(ModelParam modelParam) {
         String modelParamType = modelParam.getType();
         String type;
         if (String.class.getSimpleName().equals(modelParamType) || String.class.getName().equals(modelParamType) ||
