@@ -1,7 +1,7 @@
 package org.apache.ofbiz.rest.operation;
 
-import org.apache.juneau.collections.AMap;
 import org.apache.juneau.dto.swagger.ParameterInfo;
+import org.apache.juneau.dto.swagger.SchemaInfo;
 import org.apache.juneau.http.exception.InternalServerError;
 import org.apache.juneau.http.exception.NotAcceptable;
 import org.apache.juneau.http.exception.PreconditionFailed;
@@ -24,6 +24,7 @@ import org.apache.ofbiz.service.LocalDispatcher;
 import org.w3c.dom.Element;
 
 import javax.servlet.ServletContext;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -96,13 +97,17 @@ public class EntityOperationHandler implements OperationHandler {
                 }
             }
         } else if (ACTION_CREATE.equals(action) || ACTION_STORE.equals(action)) {
-            Map<String, AMap<String, String>> properties = new HashMap<>();
+            Map<String, SchemaInfo> properties = new HashMap<>();
             Iterator<ModelField> iter = modelEntity.getFieldsIterator();
             while (iter.hasNext()) {
                 ModelField curField = iter.next();
                 String fieldName = curField.getName();
+                if (parameterInfoMap.containsKey(fieldName)
+                ) {
+                    continue;
+                }
 
-                properties.put(fieldName, AMap.of("type", getModelFieldSwaggerDataType(curField)));
+                properties.put(fieldName, schemaInfo().type(getModelFieldSwaggerDataType(curField)));
             }
 
             if (UtilValidate.isNotEmpty(properties)) {
@@ -110,8 +115,14 @@ public class EntityOperationHandler implements OperationHandler {
                  Describing Request Body
                  https://swagger.io/docs/specification/2-0/describing-request-body/
                  */
-                parameterInfoMap.put("payload", parameterInfo("body", "payload")
-                        .schema(schemaInfo().type("object").properties(properties)));
+                ParameterInfo parameterInfo = parameterInfo()
+                        .name("body")
+                        .in("body")
+                        .required(true)
+                        .schema(schemaInfo().type("object")
+                                .properties(properties)
+                        );
+                parameterInfoMap.put(parameterInfo.getName(), parameterInfo);
             }
         }
 
@@ -192,17 +203,21 @@ public class EntityOperationHandler implements OperationHandler {
             }
         } else if (ACTION_CREATE.equals(action)) {
             try {
+                String body = restRequest.getBody().asString();
+                // TODO
                 Map parameterMap = restRequest.getParameterMap();
                 GenericValue value = delegator.makeValue(entityName);
                 value.setPKFields(parameterMap);
                 value.setNonPKFields(parameterMap);
                 delegator.create(value);
-            } catch (GenericEntityException e) {
+            } catch (GenericEntityException | IOException e) {
                 throw new InternalServerError(e);
             }
             return OperationResult.ok();
         } else if (ACTION_STORE.equals(action)) {
             try {
+                String body = restRequest.getBody().asString();
+                // TODO
                 Map<String, Object> entityContext = new HashMap<>();
                 Map parameterMap = restRequest.getParameterMap();
                 // only need PK fields
@@ -222,7 +237,7 @@ public class EntityOperationHandler implements OperationHandler {
                 }
                 value.setNonPKFields(parameterMap);
                 delegator.store(value);
-            } catch (GenericEntityException e) {
+            } catch (GenericEntityException | IOException e) {
                 throw new InternalServerError(e);
             }
             return OperationResult.ok();

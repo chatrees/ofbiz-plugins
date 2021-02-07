@@ -1,7 +1,7 @@
 package org.apache.ofbiz.rest.operation;
 
-import org.apache.juneau.collections.AMap;
 import org.apache.juneau.dto.swagger.ParameterInfo;
+import org.apache.juneau.dto.swagger.SchemaInfo;
 import org.apache.juneau.http.HttpMethod;
 import org.apache.juneau.http.exception.InternalServerError;
 import org.apache.juneau.http.exception.PreconditionRequired;
@@ -19,6 +19,7 @@ import org.w3c.dom.Element;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.*;
@@ -72,7 +73,7 @@ public class ServiceOperationHandler implements OperationHandler {
         }
 
         if (!HttpMethod.GET.equalsIgnoreCase(operation.getMethod())) { // not GET
-            Map<String, AMap<String, String>> properties = new HashMap<>();
+            Map<String, SchemaInfo> properties = new HashMap<>();
             for (ModelParam modelParam: modelService.getInModelParamList()) {
                 String fieldName = modelParam.getFieldName();
                 if (fieldName == null /* userLogin param has no field name */ ||
@@ -81,7 +82,7 @@ public class ServiceOperationHandler implements OperationHandler {
                     continue;
                 }
 
-                properties.put(fieldName, AMap.of("type", getModelParamSwaggerDataType(modelParam)));
+                properties.put(fieldName, schemaInfo().type(getModelParamSwaggerDataType(modelParam)));
             }
 
             if (UtilValidate.isNotEmpty(properties)) {
@@ -89,8 +90,14 @@ public class ServiceOperationHandler implements OperationHandler {
                  Describing Request Body
                  https://swagger.io/docs/specification/2-0/describing-request-body/
                  */
-                parameterInfoMap.put("payload", parameterInfo("body", "payload")
-                        .schema(schemaInfo().type("object").properties(properties)));
+                ParameterInfo parameterInfo = parameterInfo()
+                        .name("body")
+                        .in("body")
+                        .required(true)
+                        .schema(schemaInfo().type("object")
+                                .properties(properties)
+                        );
+                parameterInfoMap.put(parameterInfo.getName(), parameterInfo);
             }
         }
 
@@ -141,6 +148,12 @@ public class ServiceOperationHandler implements OperationHandler {
             Debug.logVerbose("[Using delegator]: " + dispatcher.getDelegator().getDelegatorName(), MODULE);
         }
 
+        try {
+            String body = restRequest.getBody().asString();
+            // TODO
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         Map<String, Object> rawParametersMap = UtilHttp.getCombinedMap(httpServletRequest);
         Map<String, Object> multiPartMap = UtilGenerics.cast(httpServletRequest.getAttribute("multiPartMap"));
 
