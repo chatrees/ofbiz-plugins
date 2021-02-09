@@ -18,6 +18,7 @@ import org.apache.ofbiz.service.LocalDispatcher;
 import org.apache.ofbiz.service.ServiceUtil;
 
 import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServletResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
@@ -91,6 +92,7 @@ public class RestGuard extends org.apache.juneau.rest.RestGuard {
         }
         List<RestConfigXMLReader.Operation> operations = restConfig.getOperations(req.getMethod().toLowerCase());
         if (operations == null) {
+            res.setStatus(HttpServletResponse.SC_NOT_FOUND);
             throw new NotFound();
         }
         super.guard(req, res);
@@ -107,6 +109,8 @@ public class RestGuard extends org.apache.juneau.rest.RestGuard {
                 return true;
             }
         }
+
+        res.setStatus(HttpServletResponse.SC_NOT_FOUND);
         throw new NotFound();
     }
 }
