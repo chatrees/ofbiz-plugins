@@ -8,10 +8,7 @@ import org.apache.juneau.http.exception.PreconditionRequired;
 import org.apache.juneau.rest.RestContext;
 import org.apache.juneau.rest.RestRequest;
 import org.apache.juneau.rest.util.UrlPathPatternMatch;
-import org.apache.ofbiz.base.util.Debug;
-import org.apache.ofbiz.base.util.UtilGenerics;
-import org.apache.ofbiz.base.util.UtilHttp;
-import org.apache.ofbiz.base.util.UtilValidate;
+import org.apache.ofbiz.base.util.*;
 import org.apache.ofbiz.entity.GenericValue;
 import org.apache.ofbiz.rest.RestConfigXMLReader;
 import org.apache.ofbiz.service.*;
@@ -62,8 +59,6 @@ public class ServiceOperationHandler implements OperationHandler {
             ParameterInfo parameterInfo = parameterInfo("path", parameterName)
                     .required(true)
                     .type(String.class.getSimpleName().toLowerCase());
-            // TODO
-            //.example()
 
             if (modelParam != null) {
                 parameterInfo.setDescription(modelParam.getShortDisplayDescription());
@@ -74,6 +69,7 @@ public class ServiceOperationHandler implements OperationHandler {
 
         if (!HttpMethod.GET.equalsIgnoreCase(operation.getMethod())) { // not GET
             Map<String, SchemaInfo> properties = new HashMap<>();
+            Map<String, Object> examples = new HashMap<>();
             for (ModelParam modelParam: modelService.getInModelParamList()) {
                 String fieldName = modelParam.getFieldName();
                 if (fieldName == null /* userLogin param has no field name */ ||
@@ -83,6 +79,7 @@ public class ServiceOperationHandler implements OperationHandler {
                 }
 
                 properties.put(fieldName, schemaInfo().type(getModelParamSwaggerDataType(modelParam)));
+                examples.put(fieldName, getModelParamExample(modelParam));
             }
 
             if (UtilValidate.isNotEmpty(properties)) {
@@ -96,6 +93,7 @@ public class ServiceOperationHandler implements OperationHandler {
                         .required(true)
                         .schema(schemaInfo().type("object")
                                 .properties(properties)
+                                .example(examples)
                         );
                 parameterInfoMap.put(parameterInfo.getName(), parameterInfo);
             }
@@ -360,5 +358,29 @@ public class ServiceOperationHandler implements OperationHandler {
             type = "object";
         }
         return type;
+    }
+
+    private static Object getModelParamExample(ModelParam modelParam) {
+        String modelParamType = modelParam.getType();
+        Object example;
+        if (String.class.getSimpleName().equals(modelParamType) || String.class.getName().equals(modelParamType)) {
+            example = modelParam.getFieldName() + " 1";
+        } else if (Timestamp.class.getSimpleName().equals(modelParamType) || Timestamp.class.getName().equals(modelParamType)) {
+            example = UtilDateTime.nowTimestamp();
+        }else if (Integer.class.getSimpleName().equals(modelParamType) || Integer.class.getName().equals(modelParamType)) {
+            example = 0;
+        } else if (Short.class.getSimpleName().equals(modelParamType) || Short.class.getName().equals(modelParamType) ||
+                Long.class.getSimpleName().equals(modelParamType) || Long.class.getName().equals(modelParamType) ||
+                Double.class.getSimpleName().equals(modelParamType) || Double.class.getName().equals(modelParamType) ||
+                BigDecimal.class.getSimpleName().equals(modelParamType) || BigDecimal.class.getName().equals(modelParamType)) {
+            example = 0;
+        } else if (Boolean.class.getSimpleName().equals(modelParamType) || Boolean.class.getName().equals(modelParamType)) {
+            example = false;
+        } else if (List.class.getSimpleName().equals(modelParamType) || List.class.getName().equals(modelParamType)) {
+            example = new ArrayList<>();
+        } else {
+            example = new Object();
+        }
+        return example;
     }
 }
