@@ -27,6 +27,14 @@ public class OperationResult {
         return new OperationResult(HttpStatus.SC_OK, output, headers);
     }
 
+    public static OperationResult created(Object output) {
+        return OperationResult.ok(output, null);
+    }
+
+    public static OperationResult forbidden(Object output) {
+        return new OperationResult(HttpStatus.SC_FORBIDDEN, output, null);
+    }
+
     public int getStatus() {
         return status;
     }

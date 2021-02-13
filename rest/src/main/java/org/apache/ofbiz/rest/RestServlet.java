@@ -166,10 +166,6 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
     protected void handleRest(RestContext restContext) {
         RestResponse restResponse = restContext.getResponse();
         RestConfigXMLReader.Operation operation = (RestConfigXMLReader.Operation) restContext.getRequest().getAttribute("_OPERATION_");
-        if (operation == null) {
-            // TODO set an error
-        }
-
         UrlPathPatternMatch urlPathPatternMatch = (UrlPathPatternMatch) restContext.getRequest().getAttribute("_URL_PATH_PATTERN_MATCH_");
 
         try {
@@ -185,9 +181,10 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                 }
             }
 
+            restResponse.setStatus(operationResult.getStatus());
             restResponse.setOutput(operationResult.getOutput());
         } catch (GeneralException e) {
-            e.printStackTrace();
+            Debug.logError(e, MODULE);
         }
     }
 }

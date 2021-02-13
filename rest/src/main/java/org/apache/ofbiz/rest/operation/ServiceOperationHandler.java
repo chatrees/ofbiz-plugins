@@ -1,6 +1,8 @@
 package org.apache.ofbiz.rest.operation;
 
-import org.apache.juneau.dto.html5.*;
+import org.apache.juneau.dto.html5.Div;
+import org.apache.juneau.dto.html5.Table;
+import org.apache.juneau.dto.html5.Tbody;
 import org.apache.juneau.dto.swagger.ParameterInfo;
 import org.apache.juneau.dto.swagger.SchemaInfo;
 import org.apache.juneau.http.HttpMethod;
@@ -20,7 +22,6 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
-import java.util.Map;
 import java.util.*;
 
 import static org.apache.juneau.dto.html5.HtmlBuilder.*;
@@ -50,51 +51,145 @@ public class ServiceOperationHandler implements OperationHandler {
         }
 
         ModelService modelService = getModelService(operation, dctx);
-        ModelPermission modelPermission = modelService.getModelPermission();
 
         Div outer = div();
-        outer.child(div().child("Service: " + modelService.getName()));
-        outer.child(div().child("Default entity: " + modelService.getDefaultEntityName()));
-        outer.child(div().child("Engine: " + modelService.getEngineName()));
-        outer.child(div().child("Invoke: " + modelService.getInvoke()));
-        outer.child(div().child("Auth: " + modelService.isAuth()));
-        outer.child(div().child("Description: " + modelService.getDescription()));
-        outer.child(div().child("Model permission: " + modelPermission.getAction()));
+
+        // service info
+        {
+            Table table = table();
+            outer.child(table);
+
+            table.children(
+                    tr(
+                            td("Service Name"),
+                            td(modelService.getName()),
+                            td("Engine Name"),
+                            td(modelService.getEngineName())
+                    ),
+                    tr(
+                            td("Description"),
+                            td(modelService.getDescription()),
+                            td("Invoke"),
+                            td(modelService.getInvoke())
+                    ),
+                    tr(
+                            td("Exportable"),
+                            td(modelService.isExport()),
+                            td("Location"),
+                            td(modelService.getLocation())
+                    ),
+                    tr(
+                            td("Definition Location"),
+                            td(modelService.getDefinitionLocation()),
+                            td("Default Entity Name"),
+                            td(modelService.getDefaultEntityName())
+                    ),
+                    tr(
+                            td("Use Transaction"),
+                            td(modelService.isUseTransaction()),
+                            td("Auth"),
+                            td(modelService.isAuth())
+                    ),
+                    tr(
+                            td("Require New Transaction"),
+                            td(modelService.isRequireNewTransaction()),
+                            td("Max Retry"),
+                            td(modelService.getMaxRetry())
+                    )
+            );
+            outer.child(hr());
+        }
 
         // model params
         {
-            Table table = table();
+            // IN param names
+            {
+                Table table = table();
+                outer.children(
+                        h2("In parameters"),
+                        table
+                );
 
-            // thead
-            Thead thead = thead();
-            table.child(thead);
+                // thead
+                addModelFieldThead(table);
 
-            // thead > tr
-            Tr theadTr = tr();
-            thead.child(theadTr);
+                // tbody
+                Tbody tbody = tbody();
+                table.child(tbody);
 
-            theadTr.child(th("Name"));
-            theadTr.child(th("Mode"));
-            theadTr.child(th("Type"));
-            theadTr.child(th("Optional"));
-            theadTr.child(th("Allow HTML"));
-            Tbody tbody = tbody();
-            table.child(tbody);
-            for (ModelParam modelParam : modelService.getModelParamList()) {
-                Tr tr = tr();
-                // tbody > tr
-                tbody.child(tr);
+                Set<String> inParamNames = modelService.getInParamNames();
+                for (String inParamName : inParamNames) {
+                    ModelParam modelParam = modelService.getParam(inParamName);
+                    if (isModelParamExcluded(modelParam)) {
+                        continue;
+                    }
 
-                tr.child(td(modelParam.getName()));
-                tr.child(td(modelParam.getMode()));
-                tr.child(td(modelParam.getType()));
-                tr.child(td(modelParam.isOptional()));
-                tr.child(td(modelParam.getAllowHtml()));
+                    addModelParamTr(modelParam, tbody);
+                }
+                outer.child(hr());
             }
-            outer.child(table);
+
+            // OUT param names
+            {
+                Table table = table();
+                outer.children(
+                        h2("Out parameters"),
+                        table
+                );
+
+                // thead
+                addModelFieldThead(table);
+
+                // tbody
+                Tbody tbody = tbody();
+                table.child(tbody);
+
+                Set<String> outParamNames = modelService.getOutParamNames();
+                for (String outParamName : outParamNames) {
+                    ModelParam modelParam = modelService.getParam(outParamName);
+                    if (isModelParamExcluded(modelParam)) {
+                        continue;
+                    }
+
+                    addModelParamTr(modelParam, tbody);
+                }
+                outer.child(hr());
+            }
         }
 
         return outer;
+    }
+
+    private void addModelFieldThead(Table table) {
+        table.child(
+                thead(
+                        tr(
+                                th("Parameter Name"),
+                                th("Optional"),
+                                th("Type"),
+                                th("Mode"),
+                                th("Internal"),
+                                th("Entity Name"),
+                                th("Field Name"),
+                                th("Allow HTML")
+                        )
+                )
+        );
+    }
+
+    private void addModelParamTr(ModelParam modelParam, Tbody tbody) {
+        tbody.child(
+                tr(
+                        td(modelParam.getName()),
+                        td(modelParam.isOptional()),
+                        td(modelParam.getType()),
+                        td(modelParam.getMode()),
+                        td(modelParam.getInternal()),
+                        td(modelParam.getEntityName()),
+                        td(modelParam.getFieldName()),
+                        td(modelParam.getAllowHtml())
+                )
+        );
     }
 
     @Override
@@ -166,7 +261,6 @@ public class ServiceOperationHandler implements OperationHandler {
 
     @Override
     public OperationResult invoke(RestConfigXMLReader.Operation operation, UrlPathPatternMatch urlPathPatternMatch, RestContext restContext) {
-        Debug.logInfo("Service: " + restContext.getRequest().getMethod() + " : " + restContext.getRequest().getPathInfo(), MODULE);
         Element handlerElement = operation.getHandlerElement();
         RestRequest restRequest = restContext.getRequest();
         HttpServletRequest httpServletRequest = (HttpServletRequest) restRequest.getRequest();
@@ -220,24 +314,11 @@ public class ServiceOperationHandler implements OperationHandler {
         // we have a service and the model; build the context
         Map<String, Object> serviceContext = new HashMap<>();
         for (ModelParam modelParam: model.getInModelParamList()) {
-            String name = modelParam.getName();
+            if (isModelParamExcluded(modelParam)) {
+                continue;
+            }
 
-            // don't include userLogin, that's taken care of below
-            if ("userLogin".equals(name)) {
-                continue;
-            }
-            // don't include locale, that is also taken care of below
-            if ("locale".equals(name)) {
-                continue;
-            }
-            // don't include timeZone, that is also taken care of below
-            if ("timeZone".equals(name)) {
-                continue;
-            }
-            // don't include theme, that is also taken care of below
-            if ("visualTheme".equals(name)) {
-                continue;
-            }
+            String name = modelParam.getName();
 
             Object value = null;
             if (UtilValidate.isNotEmpty(modelParam.getStringMapPrefix())) {
@@ -326,16 +407,21 @@ public class ServiceOperationHandler implements OperationHandler {
         }
 
         // invoke the service
-        Map<String, Object> result = null;
+        Map<String, Object> result;
         try {
             if (ASYNC.equalsIgnoreCase(mode)) {
                 dispatcher.runAsync(serviceName, serviceContext);
+                return OperationResult.ok();
             } else {
                 result = dispatcher.runSync(serviceName, serviceContext);
                 if (ServiceUtil.isError(result)) {
-                    String errorMessage = ServiceUtil.getErrorMessage(result);
-                    Debug.logError(errorMessage, MODULE);
-                    throw new InternalServerError(errorMessage);
+                    return OperationResult.forbidden(result);
+                } else {
+                    if (HttpMethod.POST.equals(restRequest.getMethod())) {
+                        return OperationResult.created(result);
+                    } else {
+                        return OperationResult.ok(result);
+                    }
                 }
             }
         } catch (ServiceAuthException e) {
@@ -352,24 +438,6 @@ public class ServiceOperationHandler implements OperationHandler {
             Debug.logError(e, "Service invocation error", MODULE);
             throw new InternalServerError("Service invocation error", e.getNested());
         }
-
-        // set the results in the output
-        Map<String, Object> output = new HashMap<>();
-        for (Map.Entry<String, Object> rme: result.entrySet()) {
-            String resultKey = rme.getKey();
-            Object resultValue = rme.getValue();
-
-            if (resultKey != null && !ModelService.RESPONSE_MESSAGE.equals(resultKey)
-                    && !ModelService.ERROR_MESSAGE.equals(resultKey)
-                    && !ModelService.ERROR_MESSAGE_LIST.equals(resultKey)
-                    && !ModelService.ERROR_MESSAGE_MAP.equals(resultKey)
-                    && !ModelService.SUCCESS_MESSAGE.equals(resultKey)
-                    && !ModelService.SUCCESS_MESSAGE_LIST.equals(resultKey)) {
-                output.put(resultKey, resultValue);
-            }
-        }
-
-        return OperationResult.ok(output);
     }
 
     private ModelService getModelService(RestConfigXMLReader.Operation operation, DispatchContext dctx) {
@@ -457,5 +525,36 @@ public class ServiceOperationHandler implements OperationHandler {
             example = new Object();
         }
         return example;
+    }
+
+    private static boolean isModelParamExcluded(ModelParam modelParam) {
+        String name = modelParam.getName();
+
+        // don't include userLogin, that's taken care of below
+        if ("userLogin".equals(name)) {
+            return true;
+        }
+        // don't include locale, that is also taken care of below
+        if ("locale".equals(name)) {
+            return true;
+        }
+        // don't include timeZone, that is also taken care of below
+        if ("timeZone".equals(name)) {
+            return true;
+        }
+        // don't include theme, that is also taken care of below
+        if ("visualTheme".equals(name)) {
+            return true;
+        }
+
+        if ("login.password".equals(name)) {
+            return true;
+        }
+
+        if ("login.username".equals(name)) {
+            return true;
+        }
+
+        return false;
     }
 }
