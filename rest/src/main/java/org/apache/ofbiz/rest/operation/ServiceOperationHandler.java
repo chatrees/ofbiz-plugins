@@ -57,7 +57,10 @@ public class ServiceOperationHandler implements OperationHandler {
         // service info
         {
             Table table = table();
-            outer.child(table);
+            outer.children(
+                    h2("Service"),
+                    table
+            );
 
             table.children(
                     tr(
@@ -158,38 +161,6 @@ public class ServiceOperationHandler implements OperationHandler {
         }
 
         return outer;
-    }
-
-    private void addModelFieldThead(Table table) {
-        table.child(
-                thead(
-                        tr(
-                                th("Parameter Name"),
-                                th("Optional"),
-                                th("Type"),
-                                th("Mode"),
-                                th("Internal"),
-                                th("Entity Name"),
-                                th("Field Name"),
-                                th("Allow HTML")
-                        )
-                )
-        );
-    }
-
-    private void addModelParamTr(ModelParam modelParam, Tbody tbody) {
-        tbody.child(
-                tr(
-                        td(modelParam.getName()),
-                        td(modelParam.isOptional()),
-                        td(modelParam.getType()),
-                        td(modelParam.getMode()),
-                        td(modelParam.getInternal()),
-                        td(modelParam.getEntityName()),
-                        td(modelParam.getFieldName()),
-                        td(modelParam.getAllowHtml())
-                )
-        );
     }
 
     @Override
@@ -470,6 +441,38 @@ public class ServiceOperationHandler implements OperationHandler {
         }
 
         return model;
+    }
+
+    private void addModelFieldThead(Table table) {
+        table.child(
+                thead(
+                        tr(
+                                th("Parameter Name"),
+                                th("Optional"),
+                                th("Type"),
+                                th("Mode"),
+                                th("Internal"),
+                                th("Entity Name"),
+                                th("Field Name"),
+                                th("Allow HTML")
+                        )
+                )
+        );
+    }
+
+    private void addModelParamTr(ModelParam modelParam, Tbody tbody) {
+        tbody.child(
+                tr(
+                        td(modelParam.getName()),
+                        td(modelParam.isOptional()),
+                        td(modelParam.getType()),
+                        td(modelParam.getMode()),
+                        td(modelParam.getInternal()),
+                        td(modelParam.getEntityName()),
+                        td(modelParam.getFieldName()),
+                        td(modelParam.getAllowHtml())
+                )
+        );
     }
 
     /**
