@@ -37,6 +37,8 @@ public class ServiceOperationHandler implements OperationHandler {
 
     @Override
     public Collection<ParameterInfo> getParametersInfos(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
+        TimeZone timeZone = UtilHttp.getTimeZone(restRequest);
+        Locale locale = UtilHttp.getLocale(restRequest);
         LocalDispatcher dispatcher = (LocalDispatcher) restRequest.getAttribute("dispatcher");
         if (dispatcher == null) {
             throw new InternalServerError("The local service dispatcher is null");
@@ -79,7 +81,7 @@ public class ServiceOperationHandler implements OperationHandler {
                 }
 
                 properties.put(fieldName, schemaInfo().type(getModelParamSwaggerDataType(modelParam)));
-                examples.put(fieldName, getModelParamExample(modelParam));
+                examples.put(fieldName, getModelParamExample(modelParam, timeZone, locale));
             }
 
             if (UtilValidate.isNotEmpty(properties)) {
@@ -360,13 +362,14 @@ public class ServiceOperationHandler implements OperationHandler {
         return type;
     }
 
-    private static Object getModelParamExample(ModelParam modelParam) {
+    private static Object getModelParamExample(ModelParam modelParam, TimeZone timeZone, Locale locale) {
         String modelParamType = modelParam.getType();
         Object example;
         if (String.class.getSimpleName().equals(modelParamType) || String.class.getName().equals(modelParamType)) {
-            example = modelParam.getFieldName() + " 1";
+            example = "Example " + modelParam.getFieldName();
         } else if (Timestamp.class.getSimpleName().equals(modelParamType) || Timestamp.class.getName().equals(modelParamType)) {
-            example = UtilDateTime.nowTimestamp();
+            Timestamp now = UtilDateTime.nowTimestamp();
+            example = UtilDateTime.timeStampToString(now, UtilDateTime.getDateTimeFormat(), timeZone, locale);
         }else if (Integer.class.getSimpleName().equals(modelParamType) || Integer.class.getName().equals(modelParamType)) {
             example = 0;
         } else if (Short.class.getSimpleName().equals(modelParamType) || Short.class.getName().equals(modelParamType) ||
