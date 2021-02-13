@@ -272,6 +272,11 @@ public class ServiceOperationHandler implements OperationHandler {
                 dispatcher.runAsync(serviceName, serviceContext);
             } else {
                 result = dispatcher.runSync(serviceName, serviceContext);
+                if (ServiceUtil.isError(result)) {
+                    String errorMessage = ServiceUtil.getErrorMessage(result);
+                    Debug.logError(errorMessage, MODULE);
+                    throw new InternalServerError(errorMessage);
+                }
             }
         } catch (ServiceAuthException e) {
             // not logging since the service engine already did
