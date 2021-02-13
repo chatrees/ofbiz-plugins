@@ -1,5 +1,6 @@
 package org.apache.ofbiz.rest.operation;
 
+import org.apache.juneau.dto.html5.*;
 import org.apache.juneau.dto.swagger.ParameterInfo;
 import org.apache.juneau.dto.swagger.SchemaInfo;
 import org.apache.juneau.http.HttpMethod;
@@ -19,8 +20,10 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.util.Map;
 import java.util.*;
 
+import static org.apache.juneau.dto.html5.HtmlBuilder.*;
 import static org.apache.juneau.dto.swagger.SwaggerBuilder.parameterInfo;
 import static org.apache.juneau.dto.swagger.SwaggerBuilder.schemaInfo;
 import static org.apache.ofbiz.webapp.event.ServiceEventHandler.ASYNC;
@@ -36,6 +39,65 @@ public class ServiceOperationHandler implements OperationHandler {
     }
 
     @Override
+    public Object getDescription(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
+        LocalDispatcher dispatcher = (LocalDispatcher) restRequest.getAttribute("dispatcher");
+        if (dispatcher == null) {
+            throw new InternalServerError("The local service dispatcher is null");
+        }
+        DispatchContext dctx = dispatcher.getDispatchContext();
+        if (dctx == null) {
+            throw new InternalServerError("Dispatch context cannot be found");
+        }
+
+        ModelService modelService = getModelService(operation, dctx);
+        ModelPermission modelPermission = modelService.getModelPermission();
+
+        Div outer = div();
+        outer.child(div().child("Service: " + modelService.getName()));
+        outer.child(div().child("Default entity: " + modelService.getDefaultEntityName()));
+        outer.child(div().child("Engine: " + modelService.getEngineName()));
+        outer.child(div().child("Invoke: " + modelService.getInvoke()));
+        outer.child(div().child("Auth: " + modelService.isAuth()));
+        outer.child(div().child("Description: " + modelService.getDescription()));
+        outer.child(div().child("Model permission: " + modelPermission.getAction()));
+
+        // model params
+        {
+            Table table = table();
+
+            // thead
+            Thead thead = thead();
+            table.child(thead);
+
+            // thead > tr
+            Tr theadTr = tr();
+            thead.child(theadTr);
+
+            theadTr.child(th("Name"));
+            theadTr.child(th("Mode"));
+            theadTr.child(th("Type"));
+            theadTr.child(th("Optional"));
+            theadTr.child(th("Allow HTML"));
+            Tbody tbody = tbody();
+            table.child(tbody);
+            for (ModelParam modelParam : modelService.getModelParamList()) {
+                Tr tr = tr();
+                // tbody > tr
+                tbody.child(tr);
+
+                tr.child(td(modelParam.getName()));
+                tr.child(td(modelParam.getMode()));
+                tr.child(td(modelParam.getType()));
+                tr.child(td(modelParam.isOptional()));
+                tr.child(td(modelParam.getAllowHtml()));
+            }
+            outer.child(table);
+        }
+
+        return outer;
+    }
+
+    @Override
     public Collection<ParameterInfo> getParametersInfos(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
         TimeZone timeZone = UtilHttp.getTimeZone(restRequest);
         Locale locale = UtilHttp.getLocale(restRequest);
@@ -48,11 +110,9 @@ public class ServiceOperationHandler implements OperationHandler {
             throw new InternalServerError("Dispatch context cannot be found");
         }
 
-        Map<String, ParameterInfo> parameterInfoMap = new HashMap<>();
+        ModelService modelService = getModelService(operation, dctx);
 
-        Element handlerElement = operation.getHandlerElement();
-        String serviceName = getServiceName(handlerElement);
-        ModelService modelService = getModelService(dctx, serviceName);
+        Map<String, ParameterInfo> parameterInfoMap = new HashMap<>();
 
         // path parameters
         for (RestConfigXMLReader.VariableResource variableResource : operation.getVariableResources()) {
@@ -310,6 +370,13 @@ public class ServiceOperationHandler implements OperationHandler {
         }
 
         return OperationResult.ok(output);
+    }
+
+    private ModelService getModelService(RestConfigXMLReader.Operation operation, DispatchContext dctx) {
+        Element handlerElement = operation.getHandlerElement();
+        String serviceName = getServiceName(handlerElement);
+        ModelService modelService = getModelService(dctx, serviceName);
+        return modelService;
     }
 
     private String getServiceName(Element handlerElement) {

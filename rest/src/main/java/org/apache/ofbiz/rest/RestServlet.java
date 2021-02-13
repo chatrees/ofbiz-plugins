@@ -156,6 +156,7 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                             .response("200",
                                     responseInfo("successful operation"))
                             .security(scheme)
+                            .description(operationHandler.getDescription(operation, req))
             );
         }
 
