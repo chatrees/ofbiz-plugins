@@ -1,6 +1,7 @@
 package org.apache.ofbiz.rest.operation;
 
 import org.apache.juneau.dto.swagger.ParameterInfo;
+import org.apache.juneau.dto.swagger.ResponseInfo;
 import org.apache.juneau.dto.swagger.SchemaInfo;
 import org.apache.juneau.http.exception.InternalServerError;
 import org.apache.juneau.http.exception.NotAcceptable;
@@ -30,8 +31,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import static org.apache.juneau.dto.swagger.SwaggerBuilder.parameterInfo;
-import static org.apache.juneau.dto.swagger.SwaggerBuilder.schemaInfo;
+import static org.apache.juneau.dto.swagger.SwaggerBuilder.*;
 
 public class EntityOperationHandler implements OperationHandler {
 
@@ -139,6 +139,13 @@ public class EntityOperationHandler implements OperationHandler {
         }
 
         return parameterInfoMap.values();
+    }
+
+    @Override
+    public Map<String, ResponseInfo> getResponseInfos(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
+        Map<String, ResponseInfo> responseInfos = new HashMap<>();
+        responseInfos.put("200", responseInfo("successful operation"));
+        return responseInfos;
     }
 
     @Override

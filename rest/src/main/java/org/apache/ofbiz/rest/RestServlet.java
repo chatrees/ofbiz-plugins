@@ -153,8 +153,7 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                             .consumes(MediaType.JSON)
                             .produces(MediaType.JSON)
                             .parameters(operationHandler.getParametersInfos(operation, req))
-                            .response("200",
-                                    responseInfo("successful operation"))
+                            .responses(operationHandler.getResponseInfos(operation, req))
                             .security(scheme)
                             .summary(operationHandler.getSummary(operation, req))
                             .description(operationHandler.getDescription(operation, req))

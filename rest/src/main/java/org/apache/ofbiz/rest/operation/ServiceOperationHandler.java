@@ -4,6 +4,7 @@ import org.apache.juneau.dto.html5.Div;
 import org.apache.juneau.dto.html5.Table;
 import org.apache.juneau.dto.html5.Tbody;
 import org.apache.juneau.dto.swagger.ParameterInfo;
+import org.apache.juneau.dto.swagger.ResponseInfo;
 import org.apache.juneau.dto.swagger.SchemaInfo;
 import org.apache.juneau.http.HttpMethod;
 import org.apache.juneau.http.exception.InternalServerError;
@@ -25,8 +26,7 @@ import java.sql.Timestamp;
 import java.util.*;
 
 import static org.apache.juneau.dto.html5.HtmlBuilder.*;
-import static org.apache.juneau.dto.swagger.SwaggerBuilder.parameterInfo;
-import static org.apache.juneau.dto.swagger.SwaggerBuilder.schemaInfo;
+import static org.apache.juneau.dto.swagger.SwaggerBuilder.*;
 import static org.apache.ofbiz.webapp.event.ServiceEventHandler.ASYNC;
 import static org.apache.ofbiz.webapp.event.ServiceEventHandler.SYNC;
 
@@ -264,6 +264,51 @@ public class ServiceOperationHandler implements OperationHandler {
         }
 
         return parameterInfoMap.values();
+    }
+
+    @Override
+    public Map<String, ResponseInfo> getResponseInfos(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
+        TimeZone timeZone = UtilHttp.getTimeZone(restRequest);
+        Locale locale = UtilHttp.getLocale(restRequest);
+        LocalDispatcher dispatcher = (LocalDispatcher) restRequest.getAttribute("dispatcher");
+        if (dispatcher == null) {
+            throw new InternalServerError("The local service dispatcher is null");
+        }
+        DispatchContext dctx = dispatcher.getDispatchContext();
+        if (dctx == null) {
+            throw new InternalServerError("Dispatch context cannot be found");
+        }
+
+        ModelService modelService = getModelService(operation, dctx);
+        Map<String, SchemaInfo> properties = new HashMap<>();
+        Map<String, SchemaInfo> additionalProperties = new HashMap<>();
+        for (String modelParamName : modelService.getOutParamNames()) {
+            ModelParam modelParam = modelService.getParam(modelParamName);
+            if (modelParamName == null /* userLogin param has no field name */ ||
+                    isModelParamExcluded(modelParam)
+            ) {
+                continue;
+            }
+
+            SchemaInfo schemaInfo = schemaInfo().type(getModelParamSwaggerDataType(modelParam));
+
+            if (modelParam.isOptional()) {
+                additionalProperties.put(modelParamName, schemaInfo);
+            } else {
+                properties.put(modelParamName, schemaInfo);
+            }
+        }
+
+        Map<String, ResponseInfo> responseInfos = new HashMap<>();
+
+        SchemaInfo schemaInfo = schemaInfo()
+                .properties(properties);
+        if (UtilValidate.isNotEmpty(additionalProperties)) {
+            schemaInfo.additionalProperties(additionalProperties);
+        }
+        responseInfos.put("200", responseInfo("successful operation").schema(schemaInfo));
+
+        return responseInfos;
     }
 
     @Override
