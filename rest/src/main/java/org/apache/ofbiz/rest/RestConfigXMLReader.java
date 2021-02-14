@@ -223,7 +223,7 @@ public final class RestConfigXMLReader {
         public Operation(Element element, Resource resource) throws GeneralException {
             loadResource(resource);
             this.method = element.getAttribute("method");
-            String id = method + "_" + StringUtil.replaceString(resourcePath, "{", "");
+            String id = method.toUpperCase() + "_" + StringUtil.replaceString(resourcePath, "{", "");
             id = StringUtil.replaceString(id, "}", "");
             id = StringUtil.replaceString(id, "/", "_");
             this.id = id;

@@ -49,6 +49,13 @@ public class EntityOperationHandler implements OperationHandler {
     }
 
     @Override
+    public Object getSummary(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
+        ModelEntity modelEntity = getModelEntity(operation, restRequest);
+        String action = getAction(operation);
+        return action + " " + modelEntity.getEntityName() + " entity";
+    }
+
+    @Override
     public Object getDescription(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
         return null;
     }

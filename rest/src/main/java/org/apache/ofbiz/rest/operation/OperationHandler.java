@@ -15,6 +15,8 @@ public interface OperationHandler {
 
     OperationResult invoke(RestConfigXMLReader.Operation operation, UrlPathPatternMatch urlPathPatternMatch, RestContext restContext);
 
+    Object getSummary(RestConfigXMLReader.Operation operation, RestRequest restRequest);
+
     Object getDescription(RestConfigXMLReader.Operation operation, RestRequest restRequest);
 
     Collection<ParameterInfo> getParametersInfos(RestConfigXMLReader.Operation operation, RestRequest restRequest);

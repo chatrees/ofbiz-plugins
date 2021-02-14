@@ -40,6 +40,22 @@ public class ServiceOperationHandler implements OperationHandler {
     }
 
     @Override
+    public Object getSummary(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
+        LocalDispatcher dispatcher = (LocalDispatcher) restRequest.getAttribute("dispatcher");
+        if (dispatcher == null) {
+            throw new InternalServerError("The local service dispatcher is null");
+        }
+        DispatchContext dctx = dispatcher.getDispatchContext();
+        if (dctx == null) {
+            throw new InternalServerError("Dispatch context cannot be found");
+        }
+
+        ModelService modelService = getModelService(operation, dctx);
+
+        return modelService.getDescription();
+    }
+
+    @Override
     public Object getDescription(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
         LocalDispatcher dispatcher = (LocalDispatcher) restRequest.getAttribute("dispatcher");
         if (dispatcher == null) {
@@ -197,20 +213,39 @@ public class ServiceOperationHandler implements OperationHandler {
 
         if (!HttpMethod.GET.equalsIgnoreCase(operation.getMethod())) { // not GET
             Map<String, SchemaInfo> properties = new HashMap<>();
+            Map<String, SchemaInfo> additionalProperties = new HashMap<>();
             Map<String, Object> examples = new HashMap<>();
+            Map<String, Object> additionalExamples = new HashMap<>();
             for (ModelParam modelParam: modelService.getInModelParamList()) {
-                String fieldName = modelParam.getFieldName();
-                if (fieldName == null /* userLogin param has no field name */ ||
-                        parameterInfoMap.containsKey(fieldName)
+                String modelParamName = modelParam.getName();
+                if (modelParamName == null /* userLogin param has no field name */ ||
+                        isModelParamExcluded(modelParam) ||
+                        parameterInfoMap.containsKey(modelParamName)
                 ) {
                     continue;
                 }
 
-                properties.put(fieldName, schemaInfo().type(getModelParamSwaggerDataType(modelParam)));
-                examples.put(fieldName, getModelParamExample(modelParam, timeZone, locale));
+                SchemaInfo schemaInfo = schemaInfo().type(getModelParamSwaggerDataType(modelParam));
+
+
+                if (modelParam.isOptional()) {
+                    additionalProperties.put(modelParamName, schemaInfo);
+                    additionalExamples.put(modelParamName, getModelParamExample(modelParam, timeZone, locale));
+                } else {
+                    properties.put(modelParamName, schemaInfo);
+                    examples.put(modelParamName, getModelParamExample(modelParam, timeZone, locale));
+                }
+
             }
 
-            if (UtilValidate.isNotEmpty(properties)) {
+            if (UtilValidate.isNotEmpty(properties) || UtilValidate.isNotEmpty(additionalProperties)) {
+
+                // merged examples
+                HashMap<String, Object> allExamples = new LinkedHashMap<>();
+                // show examples of the required fields first
+                allExamples.putAll(examples);
+                allExamples.putAll(additionalExamples);
+
                 /*
                  Describing Request Body
                  https://swagger.io/docs/specification/2-0/describing-request-body/
@@ -221,7 +256,8 @@ public class ServiceOperationHandler implements OperationHandler {
                         .required(true)
                         .schema(schemaInfo().type("object")
                                 .properties(properties)
-                                .example(examples)
+                                .additionalProperties(schemaInfo().properties(additionalProperties))
+                                .example(allExamples)
                         );
                 parameterInfoMap.put(parameterInfo.getName(), parameterInfo);
             }
