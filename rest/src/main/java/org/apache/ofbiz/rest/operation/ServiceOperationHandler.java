@@ -246,6 +246,15 @@ public class ServiceOperationHandler implements OperationHandler {
                 allExamples.putAll(examples);
                 allExamples.putAll(additionalExamples);
 
+                // schema info
+                SchemaInfo schemaInfo = schemaInfo()
+                        .type("object")
+                        .properties(properties)
+                        .example(allExamples);
+                if (UtilValidate.isNotEmpty(additionalProperties)) {
+                    schemaInfo.additionalProperties(schemaInfo().properties(additionalProperties));
+                }
+
                 /*
                  Describing Request Body
                  https://swagger.io/docs/specification/2-0/describing-request-body/
@@ -254,11 +263,7 @@ public class ServiceOperationHandler implements OperationHandler {
                         .name("body")
                         .in("body")
                         .required(true)
-                        .schema(schemaInfo().type("object")
-                                .properties(properties)
-                                .additionalProperties(schemaInfo().properties(additionalProperties))
-                                .example(allExamples)
-                        );
+                        .schema(schemaInfo);
                 parameterInfoMap.put(parameterInfo.getName(), parameterInfo);
             }
         }
@@ -291,6 +296,10 @@ public class ServiceOperationHandler implements OperationHandler {
             }
 
             SchemaInfo schemaInfo = schemaInfo().type(getModelParamSwaggerDataType(modelParam));
+            if ("array".equals(schemaInfo.getType())) {
+                schemaInfo.setItems(items().type("object"));
+                schemaInfo.setExample(new ArrayList<>());
+            }
 
             if (modelParam.isOptional()) {
                 additionalProperties.put(modelParamName, schemaInfo);
@@ -301,11 +310,16 @@ public class ServiceOperationHandler implements OperationHandler {
 
         Map<String, ResponseInfo> responseInfos = new HashMap<>();
 
+        // schema info
         SchemaInfo schemaInfo = schemaInfo()
+                .type("object")
                 .properties(properties);
         if (UtilValidate.isNotEmpty(additionalProperties)) {
-            schemaInfo.additionalProperties(additionalProperties);
+            schemaInfo.additionalProperties(schemaInfo().properties(additionalProperties));
         }
+        // TODO add schema to the response with content property
+        // @ee Describing Responses
+        // https://swagger.io/docs/specification/describing-responses/
         responseInfos.put("200", responseInfo("successful operation").schema(schemaInfo));
 
         return responseInfos;
