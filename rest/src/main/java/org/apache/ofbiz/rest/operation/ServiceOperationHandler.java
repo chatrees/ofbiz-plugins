@@ -286,7 +286,7 @@ public class ServiceOperationHandler implements OperationHandler {
 
         ModelService modelService = getModelService(operation, dctx);
         Map<String, SchemaInfo> properties = new HashMap<>();
-        Map<String, SchemaInfo> additionalProperties = new HashMap<>();
+        List<String> requiredParamNames = new ArrayList<>();
         for (String modelParamName : modelService.getOutParamNames()) {
             ModelParam modelParam = modelService.getParam(modelParamName);
             if (modelParamName == null /* userLogin param has no field name */ ||
@@ -301,10 +301,9 @@ public class ServiceOperationHandler implements OperationHandler {
                 schemaInfo.setExample(new ArrayList<>());
             }
 
-            if (modelParam.isOptional()) {
-                additionalProperties.put(modelParamName, schemaInfo);
-            } else {
-                properties.put(modelParamName, schemaInfo);
+            properties.put(modelParamName, schemaInfo);
+            if (!modelParam.isOptional()) {
+                requiredParamNames.add(modelParamName);
             }
         }
 
@@ -313,13 +312,9 @@ public class ServiceOperationHandler implements OperationHandler {
         // schema info
         SchemaInfo schemaInfo = schemaInfo()
                 .type("object")
-                .properties(properties);
-        if (UtilValidate.isNotEmpty(additionalProperties)) {
-            schemaInfo.additionalProperties(schemaInfo().properties(additionalProperties));
-        }
-        // TODO add schema to the response with content property
-        // @ee Describing Responses
-        // https://swagger.io/docs/specification/describing-responses/
+                .properties(properties)
+                .required(requiredParamNames);
+
         responseInfos.put("200", responseInfo("successful operation").schema(schemaInfo));
 
         return responseInfos;
