@@ -1,5 +1,6 @@
 package org.apache.ofbiz.rest.operation;
 
+import org.apache.http.HttpStatus;
 import org.apache.juneau.dto.html5.Div;
 import org.apache.juneau.dto.html5.Table;
 import org.apache.juneau.dto.html5.Tbody;
@@ -212,10 +213,11 @@ public class ServiceOperationHandler implements OperationHandler {
         }
 
         if (!HttpMethod.GET.equalsIgnoreCase(operation.getMethod())) { // not GET
-            Map<String, SchemaInfo> properties = new HashMap<>();
-            Map<String, SchemaInfo> additionalProperties = new HashMap<>();
-            Map<String, Object> examples = new HashMap<>();
-            Map<String, Object> additionalExamples = new HashMap<>();
+            Map<String, SchemaInfo> requiredProperties = new LinkedHashMap<>();
+            Map<String, SchemaInfo> optionalProperties = new LinkedHashMap<>();
+            List<String> requiredModelParamNames = new ArrayList<>();
+            Map<String, Object> requiredPropertyExamples = new LinkedHashMap<>();
+            Map<String, Object> optionalPropertyExamples = new LinkedHashMap<>();
             for (ModelParam modelParam: modelService.getInModelParamList()) {
                 String modelParamName = modelParam.getName();
                 if (modelParamName == null /* userLogin param has no field name */ ||
@@ -227,33 +229,31 @@ public class ServiceOperationHandler implements OperationHandler {
 
                 SchemaInfo schemaInfo = schemaInfo().type(getModelParamSwaggerDataType(modelParam));
 
-
                 if (modelParam.isOptional()) {
-                    additionalProperties.put(modelParamName, schemaInfo);
-                    additionalExamples.put(modelParamName, getModelParamExample(modelParam, timeZone, locale));
+                    optionalProperties.put(modelParamName, schemaInfo);
+                    optionalPropertyExamples.put(modelParamName, getModelParamExample(modelParam, timeZone, locale));
                 } else {
-                    properties.put(modelParamName, schemaInfo);
-                    examples.put(modelParamName, getModelParamExample(modelParam, timeZone, locale));
+                    requiredProperties.put(modelParamName, schemaInfo);
+                    requiredModelParamNames.add(modelParamName);
+                    requiredPropertyExamples.put(modelParamName, getModelParamExample(modelParam, timeZone, locale));
                 }
-
             }
 
-            if (UtilValidate.isNotEmpty(properties) || UtilValidate.isNotEmpty(additionalProperties)) {
+            if (UtilValidate.isNotEmpty(requiredProperties) || UtilValidate.isNotEmpty(optionalProperties)) {
+                Map<String, SchemaInfo> properties = new LinkedHashMap<>();
+                properties.putAll(requiredProperties);
+                properties.putAll(optionalProperties);
 
-                // merged examples
-                HashMap<String, Object> allExamples = new LinkedHashMap<>();
-                // show examples of the required fields first
-                allExamples.putAll(examples);
-                allExamples.putAll(additionalExamples);
+                Map<String, Object> examples = new LinkedHashMap<>();
+                examples.putAll(requiredPropertyExamples);
+                examples.putAll(optionalPropertyExamples);
 
                 // schema info
                 SchemaInfo schemaInfo = schemaInfo()
                         .type("object")
                         .properties(properties)
-                        .example(allExamples);
-                if (UtilValidate.isNotEmpty(additionalProperties)) {
-                    schemaInfo.additionalProperties(schemaInfo().properties(additionalProperties));
-                }
+                        .required(requiredModelParamNames)
+                        .example(examples);
 
                 /*
                  Describing Request Body
@@ -285,12 +285,18 @@ public class ServiceOperationHandler implements OperationHandler {
         }
 
         ModelService modelService = getModelService(operation, dctx);
-        Map<String, SchemaInfo> properties = new HashMap<>();
+        Map<String, SchemaInfo> requiredProperties = new LinkedHashMap<>();
+        Map<String, SchemaInfo> optionalProperties = new LinkedHashMap<>();
         List<String> requiredParamNames = new ArrayList<>();
         for (String modelParamName : modelService.getOutParamNames()) {
             ModelParam modelParam = modelService.getParam(modelParamName);
             if (modelParamName == null /* userLogin param has no field name */ ||
-                    isModelParamExcluded(modelParam)
+                    isModelParamExcluded(modelParam) ||
+                    ModelService.RESPONSE_MESSAGE.equals(modelParamName) ||
+                    ModelService.SUCCESS_MESSAGE.equals(modelParamName) ||
+                    ModelService.SUCCESS_MESSAGE_LIST.equals(modelParamName) ||
+                    ModelService.ERROR_MESSAGE.equals(modelParamName) ||
+                    ModelService.ERROR_MESSAGE_LIST.equals(modelParamName)
             ) {
                 continue;
             }
@@ -301,21 +307,73 @@ public class ServiceOperationHandler implements OperationHandler {
                 schemaInfo.setExample(new ArrayList<>());
             }
 
-            properties.put(modelParamName, schemaInfo);
-            if (!modelParam.isOptional()) {
+            if (modelParam.isOptional()) {
+                optionalProperties.put(modelParamName, schemaInfo);
+            } else {
                 requiredParamNames.add(modelParamName);
+                requiredProperties.put(modelParamName, schemaInfo);
             }
         }
 
         Map<String, ResponseInfo> responseInfos = new HashMap<>();
 
-        // schema info
-        SchemaInfo schemaInfo = schemaInfo()
-                .type("object")
-                .properties(properties)
-                .required(requiredParamNames);
+        // status 200
+        {
+            ResponseInfo responseInfo = responseInfo("successful operation");
 
-        responseInfos.put("200", responseInfo("successful operation").schema(schemaInfo));
+            if (UtilValidate.isNotEmpty(requiredProperties) || UtilValidate.isNotEmpty(optionalProperties)) {
+                Map<String, SchemaInfo> properties = new LinkedHashMap<>();
+                properties.putAll(requiredProperties);
+                properties.putAll(optionalProperties);
+                properties.put(ModelService.RESPONSE_MESSAGE, schemaInfo()
+                        .type("string")
+                        .example(ModelService.RESPOND_SUCCESS));
+                properties.put(ModelService.SUCCESS_MESSAGE, schemaInfo()
+                        .type("string")
+                        .example("Example success message"));
+                properties.put(ModelService.SUCCESS_MESSAGE_LIST, schemaInfo()
+                        .type("array")
+                        .items(items().type("string"))
+                        .example(UtilMisc.toList("Example success message")));
+
+                // schema info
+                SchemaInfo schemaInfo = schemaInfo()
+                        .type("object")
+                        .properties(properties)
+                        .required(requiredParamNames);
+                responseInfo.setSchema(schemaInfo);
+            }
+
+            responseInfos.put(String.valueOf(HttpStatus.SC_OK), responseInfo);
+        }
+
+        // status 403
+        {
+            ResponseInfo responseInfo = responseInfo("forboddem operation");
+
+            if (UtilValidate.isNotEmpty(requiredProperties) || UtilValidate.isNotEmpty(optionalProperties)) {
+                Map<String, SchemaInfo> properties = new LinkedHashMap<>();
+                properties.put(ModelService.RESPONSE_MESSAGE, schemaInfo()
+                        .type("string")
+                        .example(ModelService.RESPOND_ERROR));
+                properties.put(ModelService.ERROR_MESSAGE, schemaInfo()
+                        .type("string")
+                        .example("Example error message"));
+                properties.put(ModelService.ERROR_MESSAGE_LIST, schemaInfo()
+                        .type("array")
+                        .items(items().type("string"))
+                        .example(UtilMisc.toList("Example error message")));
+
+                // schema info
+                SchemaInfo schemaInfo = schemaInfo()
+                        .type("object")
+                        .properties(properties)
+                        .required(requiredParamNames);
+                responseInfo.setSchema(schemaInfo);
+            }
+
+            responseInfos.put(String.valueOf(HttpStatus.SC_FORBIDDEN), responseInfo);
+        }
 
         return responseInfos;
     }
