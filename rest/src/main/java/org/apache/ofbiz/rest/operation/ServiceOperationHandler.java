@@ -181,6 +181,11 @@ public class ServiceOperationHandler implements OperationHandler {
     }
 
     @Override
+    public Map<String, SchemaInfo> getDefinitions(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
+        return null;
+    }
+
+    @Override
     public Collection<ParameterInfo> getParametersInfos(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
         TimeZone timeZone = UtilHttp.getTimeZone(restRequest);
         Locale locale = UtilHttp.getLocale(restRequest);

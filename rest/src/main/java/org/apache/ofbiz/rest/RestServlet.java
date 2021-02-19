@@ -1,5 +1,6 @@
 package org.apache.ofbiz.rest;
 
+import org.apache.juneau.dto.swagger.SchemaInfo;
 import org.apache.juneau.dto.swagger.Swagger;
 import org.apache.juneau.http.MediaType;
 import org.apache.juneau.http.exception.InternalServerError;
@@ -21,6 +22,7 @@ import org.apache.ofbiz.rest.operation.OperationResult;
 
 import javax.servlet.ServletException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -138,6 +140,8 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
         }
         swagger.schemes(schemes);
 
+        Map<String, SchemaInfo> definitions = new HashMap<>();
+
         for (RestConfigXMLReader.Operation operation : operations) {
             OperationHandler operationHandler = restRequestHandler.getOperationHandler(operation);
             RestConfigXMLReader.Security security = operation.getSecurity();
@@ -158,7 +162,14 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                             .summary(operationHandler.getSummary(operation, req))
                             .description(operationHandler.getDescription(operation, req))
             );
+
+            Map<String, SchemaInfo> operationDefinitions = operationHandler.getDefinitions(operation, req);
+            if (UtilValidate.isNotEmpty(operationDefinitions)) {
+                definitions.putAll(operationDefinitions);
+            }
         }
+
+        swagger.definitions(definitions);
 
         return swagger;
     }

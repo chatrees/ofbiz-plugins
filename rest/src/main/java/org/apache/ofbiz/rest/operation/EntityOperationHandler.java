@@ -1,5 +1,7 @@
 package org.apache.ofbiz.rest.operation;
 
+import org.apache.juneau.dto.html5.Div;
+import org.apache.juneau.dto.html5.Table;
 import org.apache.juneau.dto.swagger.ParameterInfo;
 import org.apache.juneau.dto.swagger.ResponseInfo;
 import org.apache.juneau.dto.swagger.SchemaInfo;
@@ -26,11 +28,10 @@ import org.w3c.dom.Element;
 
 import javax.servlet.ServletContext;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 
+import static org.apache.juneau.dto.html5.HtmlBuilder.*;
+import static org.apache.juneau.dto.html5.HtmlBuilder.td;
 import static org.apache.juneau.dto.swagger.SwaggerBuilder.*;
 
 public class EntityOperationHandler implements OperationHandler {
@@ -57,7 +58,57 @@ public class EntityOperationHandler implements OperationHandler {
 
     @Override
     public Object getDescription(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
-        return null;
+        String entityName = getEntityName(operation);
+        String action = getAction(operation);
+
+        Div outer = div();
+        Table table = table();
+        outer.children(
+                h2("Entity"),
+                table
+        );
+        table.children(
+                tr(
+                        td("Entity"),
+                        td(entityName),
+                        td(),
+                        td()
+                ),
+                tr(
+                        td("Action"),
+                        td(action),
+                        td(),
+                        td()
+                ));
+        return outer;
+    }
+
+    @Override
+    public Map<String, SchemaInfo> getDefinitions(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
+        String entityName = getEntityName(operation);
+        ModelEntity modelEntity = getModelEntity(operation, restRequest);
+
+        List<String> requiredModelFieldNames = new ArrayList<>();
+        Map<String, SchemaInfo> properties = new LinkedHashMap<>();
+
+        Iterator<ModelField> fieldsIterator = modelEntity.getFieldsIterator();
+        while (fieldsIterator.hasNext()) {
+            ModelField modelField = fieldsIterator.next();
+            properties.put(modelField.getName(), schemaInfo().type(getModelFieldSwaggerDataType(modelField)));
+        }
+
+        Iterator<ModelField> iter = modelEntity.getPksIterator();
+        while (iter.hasNext()) {
+            ModelField curField = iter.next();
+            String fieldName = curField.getName();
+            requiredModelFieldNames.add(fieldName);
+        }
+
+        return UtilMisc.toMap(entityName, schemaInfo()
+                .type("object")
+                .properties(properties)
+                .required(requiredModelFieldNames)
+                .xml(xml().name(entityName)));
     }
 
     @Override
@@ -131,8 +182,7 @@ public class EntityOperationHandler implements OperationHandler {
                         .name("body")
                         .in("body")
                         .required(true)
-                        .schema(schemaInfo().type("object")
-                                .properties(properties)
+                        .schema(schemaInfo().ref("#/definitions/" + modelEntity.getEntityName())
                         );
                 parameterInfoMap.put(parameterInfo.getName(), parameterInfo);
             }
@@ -143,14 +193,26 @@ public class EntityOperationHandler implements OperationHandler {
 
     @Override
     public Map<String, ResponseInfo> getResponseInfos(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
+        String entityName = getEntityName(operation);
+        String action = getAction(operation);
+
+        SchemaInfo schemaInfo = null;
+
+        if (ACTION_ONE.equals(action)) {
+            schemaInfo = schemaInfo().ref("#/definitions/" + entityName);
+        } else if (ACTION_LIST.equals(action)) {
+            schemaInfo = schemaInfo()
+                    .type("array")
+                    .items(items().ref("#/definitions/" + entityName));
+        }
+
         Map<String, ResponseInfo> responseInfos = new HashMap<>();
-        responseInfos.put("200", responseInfo("successful operation"));
+        responseInfos.put("200", responseInfo("successful operation").schema(schemaInfo));
         return responseInfos;
     }
 
     @Override
     public OperationResult invoke(RestConfigXMLReader.Operation operation, UrlPathPatternMatch urlPathPatternMatch, RestContext restContext) {
-        Debug.logInfo("Entity: " + restContext.getRequest().getMethod() + " : " + restContext.getRequest().getPathInfo(), MODULE);
         RestRequest restRequest = restContext.getRequest();
         LocalDispatcher dispatcher = (LocalDispatcher) restRequest.getAttribute("dispatcher");
         Delegator delegator = (Delegator) restRequest.getAttribute("delegator");
