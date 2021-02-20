@@ -11,9 +11,7 @@ import org.apache.juneau.http.exception.PreconditionFailed;
 import org.apache.juneau.rest.RestContext;
 import org.apache.juneau.rest.RestRequest;
 import org.apache.juneau.rest.util.UrlPathPatternMatch;
-import org.apache.ofbiz.base.util.Debug;
-import org.apache.ofbiz.base.util.UtilMisc;
-import org.apache.ofbiz.base.util.UtilValidate;
+import org.apache.ofbiz.base.util.*;
 import org.apache.ofbiz.entity.Delegator;
 import org.apache.ofbiz.entity.GenericEntityException;
 import org.apache.ofbiz.entity.GenericPK;
@@ -28,6 +26,7 @@ import org.w3c.dom.Element;
 
 import javax.servlet.ServletContext;
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.util.*;
 
 import static org.apache.juneau.dto.html5.HtmlBuilder.*;
@@ -89,20 +88,27 @@ public class EntityOperationHandler implements OperationHandler {
         ModelEntity modelEntity = getModelEntity(operation, restRequest);
 
         List<String> requiredModelFieldNames = new ArrayList<>();
-        Map<String, SchemaInfo> properties = new LinkedHashMap<>();
+        Map<String, SchemaInfo> pksProperties = new LinkedHashMap<>();
+        Map<String, SchemaInfo> noPksProperties = new LinkedHashMap<>();
 
-        Iterator<ModelField> fieldsIterator = modelEntity.getFieldsIterator();
-        while (fieldsIterator.hasNext()) {
-            ModelField modelField = fieldsIterator.next();
-            properties.put(modelField.getName(), schemaInfo().type(getModelFieldSwaggerDataType(modelField)));
-        }
-
-        Iterator<ModelField> iter = modelEntity.getPksIterator();
-        while (iter.hasNext()) {
-            ModelField curField = iter.next();
-            String fieldName = curField.getName();
+        Iterator<ModelField> pksIterator = modelEntity.getPksIterator();
+        while (pksIterator.hasNext()) {
+            ModelField modelField = pksIterator.next();
+            String fieldName = modelField.getName();
+            pksProperties.put(fieldName, schemaInfo().type(getModelFieldSwaggerDataType(modelField)));
             requiredModelFieldNames.add(fieldName);
         }
+
+        Iterator<ModelField> noPksIterator = modelEntity.getNopksIterator();
+        while (noPksIterator.hasNext()) {
+            ModelField modelField = noPksIterator.next();
+            String fieldName = modelField.getName();
+            noPksProperties.put(fieldName, schemaInfo().type(getModelFieldSwaggerDataType(modelField)));
+        }
+
+        Map<String, SchemaInfo> properties = new LinkedHashMap<>();
+        properties.putAll(pksProperties);
+        properties.putAll(noPksProperties);
 
         return UtilMisc.toMap(entityName, schemaInfo()
                 .type("object")
@@ -113,8 +119,28 @@ public class EntityOperationHandler implements OperationHandler {
 
     @Override
     public Collection<ParameterInfo> getParametersInfos(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
+        TimeZone timeZone = UtilHttp.getTimeZone(restRequest);
+        Locale locale = UtilHttp.getLocale(restRequest);
+
+        Map<String, Object> pksPropertyExamples = new LinkedHashMap<>();
+        Map<String, Object> noPksPropertyExamples = new LinkedHashMap<>();
+
         ModelEntity modelEntity = getModelEntity(operation, restRequest);
         String action = getAction(operation);
+
+        // pks
+        Iterator<ModelField> pksIterator = modelEntity.getPksIterator();
+        while (pksIterator.hasNext()) {
+            ModelField modelField = pksIterator.next();
+            pksPropertyExamples.put(modelField.getName(), getModelFieldExample(modelField, timeZone, locale));
+        }
+
+        // no pks
+        Iterator<ModelField> noPksIterator = modelEntity.getNopksIterator();
+        while (noPksIterator.hasNext()) {
+            ModelField modelField = noPksIterator.next();
+            noPksPropertyExamples.put(modelField.getName(), getModelFieldExample(modelField, timeZone, locale));
+        }
 
         Map<String, ParameterInfo> parameterInfoMap = new HashMap<>();
 
@@ -125,11 +151,10 @@ public class EntityOperationHandler implements OperationHandler {
             ParameterInfo parameterInfo = parameterInfo("path", parameterName)
                     .required(true)
                     .type(String.class.getSimpleName().toLowerCase());
-            // TODO
-            //.example()
 
             if (modelField != null) {
                 parameterInfo.setDescription(modelField.getDescription());
+                parameterInfo.setExample((String) getModelFieldExample(modelField, timeZone, locale));
             }
 
             parameterInfoMap.put(parameterName, parameterInfo);
@@ -178,11 +203,16 @@ public class EntityOperationHandler implements OperationHandler {
                  Describing Request Body
                  https://swagger.io/docs/specification/2-0/describing-request-body/
                  */
+                Map<String, Object> examples = new LinkedHashMap<>();
+                examples.putAll(pksPropertyExamples);
+                examples.putAll(noPksPropertyExamples);
                 ParameterInfo parameterInfo = parameterInfo()
                         .name("body")
                         .in("body")
                         .required(true)
-                        .schema(schemaInfo().ref("#/definitions/" + modelEntity.getEntityName())
+                        .schema(schemaInfo()
+                                .ref("#/definitions/" + modelEntity.getEntityName())
+                                .example(examples)
                         );
                 parameterInfoMap.put(parameterInfo.getName(), parameterInfo);
             }
@@ -193,17 +223,46 @@ public class EntityOperationHandler implements OperationHandler {
 
     @Override
     public Map<String, ResponseInfo> getResponseInfos(RestConfigXMLReader.Operation operation, RestRequest restRequest) {
-        String entityName = getEntityName(operation);
-        String action = getAction(operation);
+        TimeZone timeZone = UtilHttp.getTimeZone(restRequest);
+        Locale locale = UtilHttp.getLocale(restRequest);
+
+        Map<String, Object> pksPropertyExamples = new LinkedHashMap<>();
+        Map<String, Object> noPksPropertyExamples = new LinkedHashMap<>();
+
+        ModelEntity modelEntity = getModelEntity(operation, restRequest);Iterator<ModelField> iter = modelEntity.getPksIterator();
+
+        // pks
+        Iterator<ModelField> pksIterator = modelEntity.getPksIterator();
+        while (pksIterator.hasNext()) {
+            ModelField modelField = pksIterator.next();
+            pksPropertyExamples.put(modelField.getName(), getModelFieldExample(modelField, timeZone, locale));
+        }
+
+        // no pks
+        Iterator<ModelField> noPksIterator = modelEntity.getNopksIterator();
+        while (noPksIterator.hasNext()) {
+            ModelField modelField = noPksIterator.next();
+            noPksPropertyExamples.put(modelField.getName(), getModelFieldExample(modelField, timeZone, locale));
+        }
+
+        Map<String, Object> examples = new LinkedHashMap<>();
+        examples.putAll(pksPropertyExamples);
+        examples.putAll(noPksPropertyExamples);
 
         SchemaInfo schemaInfo = null;
 
+        String entityName = modelEntity.getEntityName();
+        String action = getAction(operation);
+
         if (ACTION_ONE.equals(action)) {
-            schemaInfo = schemaInfo().ref("#/definitions/" + entityName);
+            schemaInfo = schemaInfo()
+                    .ref("#/definitions/" + entityName)
+                    .example(examples);
         } else if (ACTION_LIST.equals(action)) {
             schemaInfo = schemaInfo()
                     .type("array")
-                    .items(items().ref("#/definitions/" + entityName));
+                    .items(items().ref("#/definitions/" + entityName))
+                    .example(UtilMisc.toList(examples));
         }
 
         Map<String, ResponseInfo> responseInfos = new HashMap<>();
@@ -393,5 +452,48 @@ public class EntityOperationHandler implements OperationHandler {
                 return "object";
         }
 
+    }
+
+    private static Object getModelFieldExample(ModelField modelField, TimeZone timeZone, Locale locale) {
+        String modelFieldName = modelField.getName();
+        String modelFieldType = modelField.getType();
+        switch (modelFieldType) {
+            case "date-time":
+            case "date":
+            case "time":
+                Timestamp now = UtilDateTime.nowTimestamp();
+                return UtilDateTime.timeStampToString(now, UtilDateTime.getDateTimeFormat(), timeZone, locale);
+            case "id":
+            case "id-long":
+            case "id-vlong":
+            case "indicator":
+            case "very-short":
+            case "short-varchar":
+            case "long-varchar":
+            case "very-long":
+            case "comment":
+            case "description":
+            case "name":
+            case "value":
+            case "credit-card-number":
+            case "credit-card-date":
+            case "email":
+            case "url":
+            case "tel-number":
+                return "Example " + modelFieldName;
+            case "integer":
+                return 0;
+            case "currency-amount":
+            case "currency-precise":
+            case "fixed-point":
+            case "floating-point":
+            case "numeric":
+                return 0;
+            case "blob":
+            case "byte-array":
+                return new ArrayList<>();
+            default:
+                return new Object();
+        }
     }
 }
