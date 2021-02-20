@@ -21,7 +21,6 @@ import org.w3c.dom.Element;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.*;
@@ -426,14 +425,9 @@ public class ServiceOperationHandler implements OperationHandler {
             Debug.logVerbose("[Using delegator]: " + dispatcher.getDelegator().getDelegatorName(), MODULE);
         }
 
-        try {
-            String body = restRequest.getBody().asString();
-            // TODO
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
         Map<String, Object> rawParametersMap = UtilHttp.getCombinedMap(httpServletRequest);
         Map<String, Object> multiPartMap = UtilGenerics.cast(httpServletRequest.getAttribute("multiPartMap"));
+        rawParametersMap.putAll(urlPathPatternMatch.getVars());
 
         // we have a service and the model; build the context
         Map<String, Object> serviceContext = new HashMap<>();
@@ -444,7 +438,7 @@ public class ServiceOperationHandler implements OperationHandler {
 
             String name = modelParam.getName();
 
-            Object value = null;
+            Object value;
             if (UtilValidate.isNotEmpty(modelParam.getStringMapPrefix())) {
                 Map<String, Object> paramMap = UtilHttp.makeParamMapWithPrefix(httpServletRequest, multiPartMap,
                         modelParam.getStringMapPrefix(), null);
@@ -567,8 +561,7 @@ public class ServiceOperationHandler implements OperationHandler {
     private ModelService getModelService(RestConfigXMLReader.Operation operation, DispatchContext dctx) {
         Element handlerElement = operation.getHandlerElement();
         String serviceName = getServiceName(handlerElement);
-        ModelService modelService = getModelService(dctx, serviceName);
-        return modelService;
+        return getModelService(dctx, serviceName);
     }
 
     private String getServiceName(Element handlerElement) {
