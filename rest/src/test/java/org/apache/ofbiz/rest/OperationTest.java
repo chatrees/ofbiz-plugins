@@ -5,22 +5,25 @@ import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.HttpClientConnectionManager;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.conn.BasicHttpClientConnectionManager;
+import org.apache.juneau.json.JsonParser;
 import org.apache.juneau.rest.client2.RestClient;
 import org.apache.juneau.rest.client2.RestClientBuilder;
 import org.apache.juneau.rest.client2.RestResponse;
 import org.apache.juneau.rest.mock2.MockRestClient;
 import org.junit.Test;
+import org.junit.*;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
+import java.util.Map;
 
 public class OperationTest {
 
-    @Test
-    public void testGET() throws Exception {
+    private RestClient createAllSSLRestClient(String rootUri) throws Exception {
         TrustManager[] trustAllCerts = new TrustManager[]{new X509TrustManager() {
 
             @Override
@@ -39,7 +42,7 @@ public class OperationTest {
 
         SSLContext sslContext = SSLContext.getInstance("SSL");
         sslContext.init(null, trustAllCerts, null);
-        SSLConnectionSocketFactory sslConnectionFactory = new SSLConnectionSocketFactory(sslContext, SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
+        SSLConnectionSocketFactory sslConnectionFactory = new SSLConnectionSocketFactory(sslContext, NoopHostnameVerifier.INSTANCE);
 
         PlainConnectionSocketFactory plainConnectionSocketFactory = new PlainConnectionSocketFactory();
         Registry<ConnectionSocketFactory> registry = RegistryBuilder.<ConnectionSocketFactory>create()
@@ -53,10 +56,18 @@ public class OperationTest {
                 .sslSocketFactory(sslConnectionFactory)
                 .connectionManager(ccm)
                 .header("Authorization", "Basic YWRtaW46b2ZiaXo=")
-                .rootUri("https://localhost:8443/restexample/rest");
+                .rootUri(rootUri);
 
-        RestClient restClient = restClientBuilder.build();
+        return restClientBuilder.build();
+    }
+
+    @Test
+    public void testGET() throws Exception {
+        RestClient restClient = createAllSSLRestClient("https://localhost:8443/restexample/rest");
         RestResponse restResponse = restClient.get("examples/10082").run();
-        System.out.println("111 body: " + restResponse.getBody().as(String.class));
+        restResponse.assertStatus().code().is(200);
+        Map body = restResponse.getBody().parser(JsonParser.DEFAULT).as(Map.class);
+        String exampleId = (String) body.get("exampleId");
+        Assert.assertEquals("10082", exampleId);
     }
 }
