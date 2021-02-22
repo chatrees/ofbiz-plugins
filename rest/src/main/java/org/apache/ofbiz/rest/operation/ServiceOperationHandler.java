@@ -485,12 +485,14 @@ public class ServiceOperationHandler implements OperationHandler {
                 }
 
                 // no field found
-                if (value == null) {
+                if (value == null
+                        && !HttpMethod.PUT.equals(restRequest.getMethod())) {
                     //still null, give up for this one
                     continue;
                 }
 
-                if (value instanceof String && ((String) value).isEmpty()) {
+                if (value instanceof String && ((String) value).isEmpty()
+                        && !HttpMethod.PUT.equals(restRequest.getMethod())) {
                     // interpreting empty fields as null values for each in back end handling...
                     value = null;
                 }
