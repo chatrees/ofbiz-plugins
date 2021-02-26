@@ -52,6 +52,8 @@ public class OperationTest {
     @Test
     public void testPut() throws Exception {
         Map<String, Object> body = new HashMap<>();
+        body.put("exampleTypeId", "CONTRIVED");
+        body.put("statusId", "EXST_IN_DESIGN");
         body.put("exampleName", "test 5");
         RestResponse restResponse = restClient.put("examples/10082", Json.DEFAULT.toString(body)).run();
         restResponse.assertStatus().code().is(200);

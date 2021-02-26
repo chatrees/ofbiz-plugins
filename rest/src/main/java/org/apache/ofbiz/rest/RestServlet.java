@@ -193,7 +193,10 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
             }
 
             restResponse.setStatus(operationResult.getStatus());
-            restResponse.setOutput(operationResult.getOutput());
+            Object output = operationResult.getOutput();
+            if (output != null) {
+                restResponse.setOutput(output);
+            }
         } catch (GeneralException e) {
             Debug.logError(e, MODULE);
         }

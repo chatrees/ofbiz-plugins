@@ -25,7 +25,7 @@ import org.apache.ofbiz.service.LocalDispatcher;
 import org.w3c.dom.Element;
 
 import javax.servlet.ServletContext;
-import java.io.IOException;
+import javax.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
 import java.util.*;
 
@@ -157,6 +157,9 @@ public class EntityOperationHandler implements OperationHandler {
             Iterator<ModelField> iter = modelEntity.getPksIterator();
             while (iter.hasNext()) {
                 ModelField curField = iter.next();
+                if (isIgnoredModelField(curField))
+                    continue;
+
                 String fieldName = curField.getName();
                 if (!parameterInfoMap.containsKey(fieldName)) {
                     parameterInfoMap.put(fieldName, parameterInfo("query", fieldName)
@@ -169,6 +172,9 @@ public class EntityOperationHandler implements OperationHandler {
             Iterator<ModelField> iter = modelEntity.getFieldsIterator();
             while (iter.hasNext()) {
                 ModelField curField = iter.next();
+                if (isIgnoredModelField(curField))
+                    continue;
+
                 String fieldName = curField.getName();
                 if (!parameterInfoMap.containsKey(fieldName)) {
                     parameterInfoMap.put(fieldName, parameterInfo("query", fieldName)
@@ -182,6 +188,9 @@ public class EntityOperationHandler implements OperationHandler {
             Iterator<ModelField> iter = modelEntity.getFieldsIterator();
             while (iter.hasNext()) {
                 ModelField curField = iter.next();
+                if (isIgnoredModelField(curField))
+                    continue;
+
                 String fieldName = curField.getName();
                 if (parameterInfoMap.containsKey(fieldName)
                 ) {
@@ -240,6 +249,7 @@ public class EntityOperationHandler implements OperationHandler {
     @Override
     public OperationResult invoke(RestConfigXMLReader.Operation operation, UrlPathPatternMatch urlPathPatternMatch, RestContext restContext) {
         RestRequest restRequest = restContext.getRequest();
+        HttpServletRequest httpServletRequest = (HttpServletRequest) restRequest.getRequest();
         LocalDispatcher dispatcher = (LocalDispatcher) restRequest.getAttribute("dispatcher");
         Delegator delegator = (Delegator) restRequest.getAttribute("delegator");
         String entityName = getEntityName(operation);
@@ -250,8 +260,12 @@ public class EntityOperationHandler implements OperationHandler {
 
         ModelEntity modelEntity = getModelEntity(operation, restRequest);
 
+        Map<String, Object> rawParametersMap = UtilHttp.getCombinedMap(httpServletRequest);
+        rawParametersMap.putAll(urlPathPatternMatch.getVars());
+
         if (ACTION_LIST.equals(action)) {
             Map<String, Object> inputFields = new HashMap<>();
+            inputFields.putAll(rawParametersMap);
             Map<String, Object> performFindListInMap = UtilMisc.toMap(
                     "entityName", entityName,
                     "inputFields", inputFields,
@@ -288,6 +302,9 @@ public class EntityOperationHandler implements OperationHandler {
             Iterator<ModelField> iter = modelEntity.getPksIterator();
             while (iter.hasNext()) {
                 ModelField curField = iter.next();
+                if (isIgnoredModelField(curField))
+                    continue;
+
                 String fieldName = curField.getName();
                 Object fieldValue = parameters.get(fieldName);
                 entityContext.put(fieldName, fieldValue);
@@ -310,27 +327,25 @@ public class EntityOperationHandler implements OperationHandler {
             }
         } else if (ACTION_CREATE.equals(action)) {
             try {
-                String body = restRequest.getBody().asString();
-                // TODO
-                Map parameterMap = restRequest.getParameterMap();
                 GenericValue value = delegator.makeValue(entityName);
-                value.setPKFields(parameterMap);
-                value.setNonPKFields(parameterMap);
+                value.setPKFields(rawParametersMap);
+                value.setNonPKFields(rawParametersMap);
                 delegator.create(value);
-            } catch (GenericEntityException | IOException e) {
+            } catch (GenericEntityException e) {
                 throw new InternalServerError(e);
             }
             return OperationResult.ok();
         } else if (ACTION_STORE.equals(action)) {
             try {
-                String body = restRequest.getBody().asString();
-                // TODO
                 Map<String, Object> entityContext = new HashMap<>();
                 Map parameterMap = restRequest.getParameterMap();
                 // only need PK fields
                 Iterator<ModelField> iter = modelEntity.getPksIterator();
                 while (iter.hasNext()) {
                     ModelField curField = iter.next();
+                    if (isIgnoredModelField(curField))
+                        continue;
+
                     String fieldName = curField.getName();
                     Object fieldValue = null;
                     if (parameterMap.containsKey(fieldName)) {
@@ -342,9 +357,9 @@ public class EntityOperationHandler implements OperationHandler {
                 if (UtilValidate.isEmpty(value)) {
                     throw new PreconditionFailed("Could not find " + entityName + " with " + entityContext);
                 }
-                value.setNonPKFields(parameterMap);
+                value.setNonPKFields(rawParametersMap);
                 delegator.store(value);
-            } catch (GenericEntityException | IOException e) {
+            } catch (GenericEntityException e) {
                 throw new InternalServerError(e);
             }
             return OperationResult.ok();
@@ -462,5 +477,13 @@ public class EntityOperationHandler implements OperationHandler {
             default:
                 return new Object();
         }
+    }
+
+    private static boolean isIgnoredModelField(ModelField modelField) {
+        String name = modelField.getName();
+        return ModelEntity.STAMP_FIELD.equals(name)
+                || ModelEntity.STAMP_TX_FIELD.equals(name)
+                || ModelEntity.CREATE_STAMP_FIELD.equals(name)
+                || ModelEntity.CREATE_STAMP_TX_FIELD.equals(name);
     }
 }

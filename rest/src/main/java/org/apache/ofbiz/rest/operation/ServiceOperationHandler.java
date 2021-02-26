@@ -556,7 +556,7 @@ public class ServiceOperationHandler implements OperationHandler {
             }
         } catch (GenericServiceException e) {
             Debug.logError(e, "Service invocation error", MODULE);
-            throw new InternalServerError("Service invocation error", e.getNested());
+            throw new InternalServerError(e.getNested().getMessage());
         }
     }
 
