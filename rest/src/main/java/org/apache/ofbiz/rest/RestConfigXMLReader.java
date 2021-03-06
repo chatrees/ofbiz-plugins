@@ -87,6 +87,20 @@ public final class RestConfigXMLReader {
                     description = null;
                 }
 
+                // tags
+                List<? extends  Element> tagElements = UtilXml.childElementList(rootElement, "tag");
+                if (UtilValidate.isNotEmpty(tagElements)) {
+                    for (Element tagElement: tagElements) {
+                        String name = UtilXml.elementAttribute(tagElement, "name", null);
+                        if (UtilValidate.isEmpty(name)) {
+                            throw new WebAppConfigurationException(new Exception("Tag's name is required"));
+                        }
+
+                        String description = UtilXml.elementAttribute(tagElement, "description", null);
+                        tags.put(name, tag(name).description(description));
+                    }
+                }
+
                 loadResource(rootElement);
             } else {
                 title = null;
@@ -115,9 +129,6 @@ public final class RestConfigXMLReader {
                 List<Operation> operations = this.methodOperationNodesMap.computeIfAbsent(method, k -> new ArrayList<>());
                 operations.add(operation);
 
-                // add tags
-                tags.putAll(operation.getTags());
-
                 // load children
                 for (Resource childResource : resource.getChildResourceMap().values()) {
                     loadResource(childResource);
@@ -141,8 +152,8 @@ public final class RestConfigXMLReader {
             return methodOperationNodesMap.get(method);
         }
 
-        public Collection<Tag> getTags() {
-            return tags.values();
+        public Tag getTag(String name) {
+            return tags.get(name);
         }
 
         public Map<String, String> getOperationHandlerMap() {
@@ -217,7 +228,7 @@ public final class RestConfigXMLReader {
         private final String path;
         private final Security security;
         private final Element handlerElement;
-        private final Map<String, Tag> tags;
+        private final Set<String> tagNames = new HashSet<>();
         private final List<VariableResource> variableResources = new ArrayList<>();
         private String resourcePath;
         public Operation(Element element, Resource resource) throws GeneralException {
@@ -229,7 +240,9 @@ public final class RestConfigXMLReader {
             this.id = id;
             this.path = "/" + resourcePath;
             this.handlerElement = getHandlerElement(element);
-            this.tags = createTags(element);
+
+            // tag names
+            loadTagNames(element);
 
             // security
             Element securityElement = UtilXml.firstChildElement(element, "security");
@@ -266,20 +279,17 @@ public final class RestConfigXMLReader {
             return handlerElement;
         }
 
-        private Map<String, Tag> createTags(Element resourceElement) {
-            Map<String, Tag> tags = new HashMap<>();
+        private void loadTagNames(Element resourceElement) {
             String tagsAttr = resourceElement.getAttribute("tags");
             List<String> tokens = StringUtil.split(tagsAttr, " ");
             if (UtilValidate.isNotEmpty(tokens)) {
                 for (String token : tokens) {
                     token = token.trim();
-                    if (!UtilValidate.isEmpty(token)) {
-                        Tag tag = tag(token).description(token);
-                        tags.put(tag.getName(), tag);
+                    if (UtilValidate.isNotEmpty(token)) {
+                        this.tagNames.add(token);
                     }
                 }
             }
-            return tags;
         }
 
         public String getId() {
@@ -306,8 +316,8 @@ public final class RestConfigXMLReader {
             return Collections.unmodifiableList(variableResources);
         }
 
-        public Map<String, Tag> getTags() {
-            return tags;
+        public Set<String> getTagNames() {
+            return tagNames;
         }
     }
 

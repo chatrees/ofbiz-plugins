@@ -2,6 +2,7 @@ package org.apache.ofbiz.rest;
 
 import org.apache.juneau.dto.swagger.SchemaInfo;
 import org.apache.juneau.dto.swagger.Swagger;
+import org.apache.juneau.dto.swagger.Tag;
 import org.apache.juneau.http.MediaType;
 import org.apache.juneau.http.exception.InternalServerError;
 import org.apache.juneau.json.JsonParser;
@@ -21,10 +22,7 @@ import org.apache.ofbiz.rest.operation.OperationHandlerException;
 import org.apache.ofbiz.rest.operation.OperationResult;
 
 import javax.servlet.ServletException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.apache.juneau.dto.swagger.SwaggerBuilder.*;
 import static org.apache.juneau.http.HttpMethod.*;
@@ -103,10 +101,13 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
 
         RestRequestHandler restRequestHandler = RestRequestHandler.getRestRequestHandler(getServletContext());
         RestConfigXMLReader.RestConfig restConfig = restRequestHandler.getRestConfig();
-        List<RestConfigXMLReader.Operation> operations = restConfig.getOperations();
-        for (RestConfigXMLReader.Operation operation : operations) {
-            // TODO generate tags
+        if (UtilValidate.isEmpty(restConfig)) {
+            throw new OperationHandlerException("Could not find rest config");
         }
+
+        List<RestConfigXMLReader.Operation> operations = restConfig.getOperations();
+
+        Map<String, Tag> tags = new HashMap<>();
 
         Swagger swagger = swagger()
                 .swagger("2.0")
@@ -124,11 +125,7 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
                 .basePath(basePath)
                 .consumes(originalSwagger.getConsumes())
                 .produces(originalSwagger.getProduces())
-                .definitions(originalSwagger.getDefinitions())
-                .tags(
-                        // TODO
-                        //tag("pet").description("Pet")
-                );
+                .definitions(originalSwagger.getDefinitions());
 
         // schema and security
         List<String> schemes = UtilMisc.toList("http", "https");
@@ -148,11 +145,20 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
             String path = operation.getPath();
             String methodName = operation.getMethod();
             String scheme = security.isHttps() ? "https" : "http";
+            Set<String> tagNames = operation.getTagNames();
+            for (String tagName: tagNames) {
+                Tag tag = restConfig.getTag(tagName);
+                if (UtilValidate.isNotEmpty(tag)) {
+                    if (!tags.containsKey(tagName)) {
+                        tags.put(tagName, tag);
+                    }
+                } else {
+                    Debug.logWarning("Tag not found: " + tagName, MODULE);
+                }
+            }
             swagger.path(path, methodName,
                     operation()
-                            // TODO
-                            //.tags("pet")
-
+                            .tags(tagNames)
                             .operationId(operation.getId())
                             .consumes(MediaType.JSON)
                             .produces(MediaType.JSON)
@@ -169,6 +175,7 @@ public class RestServlet extends org.apache.juneau.rest.RestServlet {
             }
         }
 
+        swagger.tags(tags.values());
         swagger.definitions(definitions);
 
         return swagger;
