@@ -89,10 +89,9 @@ under the License.
         <dt class="col-lg-2">${uiLabelMap.PartyWeight}</dt>
         <dd class="col-lg-10">${person.weight}</dd>
       </#if>
-      <#if person.maritalStatusEnumId?has_content>
-        <#assign maritalStatus = EntityQuery.use(delegator).from("Enumeration").where("enumId", person.maritalStatusEnumId!).cache(true).queryOne()!>
+      <#if person.maritalStatus?has_content>
         <dt class="col-lg-2">${uiLabelMap.PartyMaritalStatus}</dt>
-        <dd class="col-lg-10">${maritalStatus.description!person.maritalStatusEnumId}</dd>
+        <dd class="col-lg-10">${person.maritalStatus}</dd>
       </#if>
     </dl>
     </div>
@@ -146,7 +145,7 @@ under the License.
   <div class="card-header">
     <div class="row">
       <div class="col-lg-3"><strong>${uiLabelMap.PartyContactInformation}</strong></div>
-      <div class="col-lg-9 text-right"><a href="<@ofbizUrl>editcontactmech</@ofbizUrl>" class="card-link">${uiLabelMap.CommonCreate}</a></div>
+      <div class="col-lg-9 text-right"><a href="<@ofbizUrl>editcontactmech</@ofbizUrl>" class="card-link">${uiLabelMap.CommonCreateNew}</a></div>
     </div>
   </div>
 
@@ -458,7 +457,7 @@ under the License.
       <#else>
         <p class="card-text">${uiLabelMap.EcommerceNoFiles}</p>
       </#if>
-      <form method="post" enctype="multipart/form-data" action="<@ofbizUrl>uploadPartyContent</@ofbizUrl>">
+      <form method="post" class="form-inline" enctype="multipart/form-data" action="<@ofbizUrl>uploadPartyContent</@ofbizUrl>">
         <input type="hidden" name="partyId" value="${party.partyId}"/>
         <input type="hidden" name="dataCategoryId" value="PERSONAL"/>
         <input type="hidden" name="contentTypeId" value="DOCUMENT"/>
@@ -467,7 +466,7 @@ under the License.
         <label class="mr-2">${uiLabelMap.EcommerceUploadNewFile}</label>
         <div class="custom-file mr-2">
           <input type="file" class="custom-file-input" id="customFile" required/>
-          <label class="custom-file-label" for="customFile">Choose file</label>
+          <span class="custom-file-control"></span>
           <div class="invalid-feedback">Example invalid custom file feedback</div>
         </div>
         <script>

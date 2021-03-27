@@ -664,6 +664,9 @@ under the License.
                     <decorator-section name="right-column">
                         <include-screen name="rightbar" location="component://ecommerce/widget/CommonScreens.xml"/>
                     </decorator-section>
+                    <decorator-section name="right-column">
+                        <include-screen name="rightbar" location="component://ecommerce/widget/CommonScreens.xml"/>
+                    </decorator-section>
                 </decorator-screen>
             </widgets>
         </section>

@@ -18,6 +18,7 @@
     -->
   ${virtualJavaScript!}
   <script type="application/javascript">
+<!--
     function displayProductVirtualId(variantId, virtualProductId, pForm) {
         if(variantId){
             pForm.product_id.value = variantId;
@@ -48,6 +49,7 @@
             priceElem.appendChild(priceTxt);
         }
     }
+//-->
 </script>
 ${screens.render("component://order/widget/ordermgr/OrderEntryCatalogScreens.xml#productvariantjs")}
 ${variantInfoJavaScript!}
@@ -72,22 +74,18 @@ ${variantInfoJavaScript!}
               <#assign productDetailId = "productDetailId"/>
               <#assign productDetailId = productDetailId + product.productId/>
 
-              <div class="col-md-4 products-card card-deck">
+              <div class="col-md-4 products-card">
                 <div class="card text-center">
-                  <a href="${productUrl}" class="mt-2">
+                  <a href="${productUrl}">
                     <img class="card-img-top" src="<@ofbizContentUrl>${contentPathPrefix!}${smallImageUrl}</@ofbizContentUrl>" alt="Small Image">
                   </a>
                   <div class="card-body">
                     <h4 class="card-title"><a href="${productUrl}" class="btn btn-link">${productContentWrapper.get("PRODUCT_NAME", "html")!}</a></h4>
                     <div class="card-text">
-                      ${productContentWrapper.get("DESCRIPTION", "html")!}<#if daysToShip??>&nbsp;-&nbsp;${uiLabelMap.ProductUsuallyShipsIn} <b>${daysToShip}</b> ${uiLabelMap.CommonDays}!</#if>
-
+                      <div>${productContentWrapper.get("DESCRIPTION", "html")!}<#if daysToShip??>&nbsp;-&nbsp;${uiLabelMap.ProductUsuallyShipsIn} <b>${daysToShip}</b> ${uiLabelMap.CommonDays}!</#if></div>
                       <#-- Display category-specific product comments -->
                         <#if prodCatMem?? && prodCatMem.comments?has_content>
                           <p>${prodCatMem.comments}</p>
-                        </#if>
-                        <#if request.getAttribute("highlightLabel")??>
-                          <p><strong>${request.getAttribute("highlightLabel")}</strong></p>
                         </#if>
 
                         <#-- example of showing a certain type of feature with the product -->
@@ -122,7 +120,7 @@ ${variantInfoJavaScript!}
                               ${uiLabelMap.ProductListPrice}: <span class="basePrice"><@ofbizCurrency amount=price.listPrice isoCode=price.currencyUsed/></span>
                             </p>
   </#if>
-    <strong>
+  <b>
     <#if price.isSale?? && price.isSale>
       <p class="badge badge-info">${uiLabelMap.OrderOnSale}!</p>
       <#assign priceStyle = "salePrice">
@@ -133,7 +131,7 @@ ${variantInfoJavaScript!}
     <#if (price.price?default(0) > 0 && "N" == product.requireAmount?default("N"))>
       <p>${uiLabelMap.OrderYourPrice}: <#if "Y" = product.isVirtual!> ${uiLabelMap.CommonFrom} </#if><span class="${priceStyle}"><@ofbizCurrency amount=price.price isoCode=price.currencyUsed/></span></p>
     </#if>
-    </strong>
+  </b>
   <#if price.listPrice?? && price.price?? && price.price?double < price.listPrice?double>
   <#assign priceSaved = price.listPrice?double - price.price?double>
     <#assign percentSaved = (priceSaved?double / price.listPrice?double) * 100>
