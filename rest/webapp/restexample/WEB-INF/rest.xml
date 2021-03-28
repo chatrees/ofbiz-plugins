@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rest-conf>
+    <title>Apache OFBiz - Example Application</title>
+    <description>Example Application of the Apache OFBiz Project</description>
+
+    <tag name="example" description="Example"/>
+    <tag name="exampleFeature" description="Example Feature"/>
+
+    <resource name="examples">
+        <operation method="get" tags="example">
+            <security https="false" auth="false"/>
+            <handler><entity name="Example" action="list"/></handler>
+        </operation>
+        <operation method="post" tags="example">
+            <security https="true" auth="true"/>
+            <handler><service name="createExample"/></handler>
+        </operation>
+        <variable name="exampleId">
+            <operation method="get" tags="example">
+                <security https="true" auth="false"/>
+                <handler><entity name="Example" action="one"/></handler>
+            </operation>
+            <operation method="patch" tags="example">
+                <security https="true" auth="true"/>
+                <handler><service name="updateExample"/></handler>
+            </operation>
+            <operation method="put" tags="example">
+                <security https="true" auth="true"/>
+                <handler><service name="updateExample"/></handler>
+            </operation>
+            <operation method="delete" tags="example">
+                <security https="true" auth="true"/>
+                <handler><service name="deleteExample"/></handler>
+            </operation>
+            <resource name="items">
+                <operation method="get" tags="example exampleItem">
+                    <security https="true" auth="false"/>
+                    <handler><entity name="ExampleItem" action="list"/></handler>
+                </operation>
+            </resource>
+        </variable>
+    </resource>
+    <resource name="exampleFeatures">
+        <operation method="get" tags="exampleFeature">
+            <security https="true" auth="true"/>
+            <handler><entity name="ExampleFeature" action="list"/></handler>
+        </operation>
+        <operation method="post" tags="exampleFeature">
+            <security https="true" auth="true"/>
+            <handler><entity name="ExampleFeature" action="create"/></handler>
+        </operation>
+        <variable name="exampleFeatureId">
+            <operation method="get" tags="exampleFeature">
+                <security https="true" auth="true"/>
+                <handler><entity name="ExampleFeature" action="one"/></handler>
+            </operation>
+            <operation method="patch" tags="exampleFeature">
+                <security https="true" auth="true"/>
+                <handler><entity name="ExampleFeature" action="store"/></handler>
+            </operation>
+            <operation method="put" tags="exampleFeature">
+                <security https="true" auth="true"/>
+                <handler><entity name="ExampleFeature" action="store"/></handler>
+            </operation>
+            <operation method="delete" tags="exampleFeature">
+                <security https="true" auth="true"/>
+                <handler><entity name="ExampleFeature" action="delete"/></handler>
+            </operation>
+        </variable>
+    </resource>
+</rest-conf>

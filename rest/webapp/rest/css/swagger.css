@@ -1,0 +1,7 @@
+.swagger-ui .wrapper {
+    max-width: unset;
+}
+.swagger-ui select {
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
