@@ -52,7 +52,7 @@ public class ServiceOperationHandler implements OperationHandler {
 
         ModelService modelService = getModelService(operation, dctx);
 
-        return modelService.getDescription();
+        return modelService.description;
     }
 
     @Override
@@ -81,39 +81,39 @@ public class ServiceOperationHandler implements OperationHandler {
             table.children(
                     tr(
                             td("Service Name"),
-                            td(modelService.getName()),
+                            td(modelService.name),
                             td("Engine Name"),
-                            td(modelService.getEngineName())
+                            td(modelService.engineName)
                     ),
                     tr(
                             td("Description"),
-                            td(modelService.getDescription()),
+                            td(modelService.description),
                             td("Invoke"),
-                            td(modelService.getInvoke())
+                            td(modelService.invoke)
                     ),
                     tr(
                             td("Exportable"),
-                            td(modelService.isExport()),
+                            td(modelService.export),
                             td("Location"),
-                            td(modelService.getLocation())
+                            td(modelService.location)
                     ),
                     tr(
                             td("Definition Location"),
-                            td(modelService.getDefinitionLocation()),
+                            td(modelService.definitionLocation),
                             td("Default Entity Name"),
-                            td(modelService.getDefaultEntityName())
+                            td(modelService.defaultEntityName)
                     ),
                     tr(
                             td("Use Transaction"),
-                            td(modelService.isUseTransaction()),
+                            td(modelService.useTransaction),
                             td("Auth"),
-                            td(modelService.isAuth())
+                            td(modelService.auth)
                     ),
                     tr(
                             td("Require New Transaction"),
-                            td(modelService.isRequireNewTransaction()),
+                            td(modelService.requireNewTransaction),
                             td("Max Retry"),
-                            td(modelService.getMaxRetry())
+                            td(modelService.maxRetry)
                     )
             );
             outer.child(hr());
@@ -439,16 +439,16 @@ public class ServiceOperationHandler implements OperationHandler {
             String name = modelParam.getName();
 
             Object value;
-            if (UtilValidate.isNotEmpty(modelParam.getStringMapPrefix())) {
+            if (UtilValidate.isNotEmpty(modelParam.stringMapPrefix)) {
                 Map<String, Object> paramMap = UtilHttp.makeParamMapWithPrefix(httpServletRequest, multiPartMap,
-                        modelParam.getStringMapPrefix(), null);
+                        modelParam.stringMapPrefix, null);
                 value = paramMap;
                 if (Debug.verboseOn()) {
                     Debug.logVerbose("Set [" + modelParam.getName() + "]: " + paramMap, MODULE);
                 }
-            } else if (UtilValidate.isNotEmpty(modelParam.getStringListSuffix())) {
+            } else if (UtilValidate.isNotEmpty(modelParam.stringListSuffix)) {
                 List<Object> paramList = UtilHttp.makeParamListWithSuffix(httpServletRequest, multiPartMap,
-                        modelParam.getStringListSuffix(), null);
+                        modelParam.stringListSuffix, null);
                 value = paramList;
             } else {
                 // first check the multi-part map
@@ -457,8 +457,8 @@ public class ServiceOperationHandler implements OperationHandler {
                 // next check attributes; do this before parameters so that attribute which can
                 // be changed by code can override parameters which can't
                 if (UtilValidate.isEmpty(value)) {
-                    Object tempVal = httpServletRequest.getAttribute(UtilValidate.isEmpty(modelParam.getRequestAttributeName()) ? name
-                            : modelParam.getRequestAttributeName());
+                    Object tempVal = httpServletRequest.getAttribute(UtilValidate.isEmpty(modelParam.requestAttributeName) ? name
+                            : modelParam.requestAttributeName);
                     if (tempVal != null) {
                         value = tempVal;
                     }
@@ -469,7 +469,7 @@ public class ServiceOperationHandler implements OperationHandler {
                     // if the service modelParam has allow-html="any" then get this direct from the
                     // request instead of in the parameters Map so there will be no canonicalization
                     // possibly messing things up
-                    if ("any".equals(modelParam.getAllowHtml())) {
+                    if ("any".equals(modelParam.allowHtml)) {
                         value = httpServletRequest.getParameter(name);
                     } else {
                         // use the rawParametersMap from UtilHttp in order to also get pathInfo
@@ -480,7 +480,7 @@ public class ServiceOperationHandler implements OperationHandler {
                     // make any composite parameter data (e.g., from a set of parameters
                     // {name_c_date, name_c_hour, name_c_minutes})
                     if (value == null) {
-                        value = UtilHttp.makeParamValueFromComposite(httpServletRequest, name);
+                        value = UtilHttp.makeParamValueFromComposite(httpServletRequest, name, locale);
                     }
                 }
 
@@ -618,7 +618,7 @@ public class ServiceOperationHandler implements OperationHandler {
                         td(modelParam.getInternal()),
                         td(modelParam.getEntityName()),
                         td(modelParam.getFieldName()),
-                        td(modelParam.getAllowHtml())
+                        td(modelParam.allowHtml)
                 )
         );
     }

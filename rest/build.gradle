@@ -19,6 +19,7 @@
 
 dependencies {
     pluginLibsCompile 'org.apache.juneau:juneau-all:8.2.0'
+    pluginLibsCompile 'org.mockito:mockito-inline:2.23.0'
 }
 
 task install {
